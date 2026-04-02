@@ -7,7 +7,9 @@ import MobileNav from './MobileNav'
 export default function Layout() {
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window === 'undefined') return false
-    return document.documentElement.classList.contains('dark')
+    const saved = localStorage.getItem('clat-tribe-dark-mode')
+    if (saved !== null) return saved === 'true'
+    return window.matchMedia('(prefers-color-scheme: dark)').matches
   })
 
   useEffect(() => {
@@ -16,6 +18,7 @@ export default function Layout() {
     } else {
       document.documentElement.classList.remove('dark')
     }
+    localStorage.setItem('clat-tribe-dark-mode', darkMode)
   }, [darkMode])
 
   const handleToggleDarkMode = () => {
@@ -25,9 +28,9 @@ export default function Layout() {
   return (
     <>
       <Navbar darkMode={darkMode} onToggleDarkMode={handleToggleDarkMode} />
-      <div className="flex min-h-screen bg-surface">
+      <div className="flex min-h-[calc(100vh-4rem)] bg-surface">
         <Sidebar />
-        <main className="flex-1 lg:ml-64 p-6 md:p-10 pt-6">
+        <main className="flex-1 lg:ml-64 p-6 md:p-10 pt-6 pb-20 md:pb-10">
           <Outlet />
         </main>
       </div>
