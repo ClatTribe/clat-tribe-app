@@ -68,6 +68,154 @@
   --font-label: "Manrope", sans-serif;
 }
 
+/* Dark Mode Overrides */
+.dark {
+  --color-surface: #121212;
+  --color-surface-dim: #1e1e1e;
+  --color-surface-bright: #1a1a1a;
+  --color-surface-container: #1e1e1e;
+  --color-surface-container-low: #191919;
+  --color-surface-container-high: #252525;
+  --color-surface-container-highest: #2c2c2c;
+  --color-surface-container-lowest: #0e0e0e;
+  --color-surface-variant: #2c2c2c;
+  --color-surface-tint: #c4c5dc;
+  --color-background: #121212;
+
+  --color-primary: #ffffff;
+  --color-primary-container: #2d2f42;
+  --color-on-primary: #000000;
+  --color-on-primary-container: #c4c5dc;
+
+  --color-secondary: #fea619;
+  --color-secondary-container: #855300;
+  --color-on-secondary: #000000;
+  --color-on-secondary-container: #ffddb8;
+
+  --color-on-surface: #e6e6e6;
+  --color-on-surface-variant: #b0b0b6;
+  --color-on-background: #e6e6e6;
+  --color-inverse-surface: #e6e6e6;
+  --color-inverse-on-surface: #1a1a1a;
+
+  --color-outline: #555560;
+  --color-outline-variant: #3a3a42;
+
+  --color-error: #ff6b6b;
+  --color-error-container: #93000a;
+  --color-on-error: #ffffff;
+  --color-on-error-container: #ffdad6;
+}
+
+/* Material Symbols */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  vertical-align: middle;
+}
+
+/* Glass effects */
+.glass-nav {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Ghost border */
+.ghost-border {
+  outline: 1px solid rgba(199, 197, 205, 0.15);
+}
+
+/* Drop cap for editorial */
+.drop-cap::first-letter {
+  float: left;
+  font-size: 4.5rem;
+  line-height: 1;
+  padding-top: 4px;
+  padding-right: 12px;
+  font-family: 'Newsreader', serif;
+  font-weight: 800;
+  color: var(--color-on-surface);
+}
+
+/* Scrollbar hide */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+@import "tailwindcss";
+
+@theme {
+  /* Surface System */
+  --color-surface: #f8f9fa;
+  --color-surface-dim: #d9dadb;
+  --color-surface-bright: #f8f9fa;
+  --color-surface-container: #edeeef;
+  --color-surface-container-low: #f3f4f5;
+  --color-surface-container-high: #e7e8e9;
+  --color-surface-container-highest: #e1e3e4;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-variant: #e1e3e4;
+  --color-surface-tint: #5b5d71;
+  --color-background: #f8f9fa;
+
+  /* Primary */
+  --color-primary: #000000;
+  --color-primary-container: #181a2b;
+  --color-primary-fixed: #e0e1f8;
+  --color-primary-fixed-dim: #c4c5dc;
+  --color-on-primary: #ffffff;
+  --color-on-primary-container: #818297;
+  --color-on-primary-fixed: #181a2b;
+  --color-on-primary-fixed-variant: #434558;
+  --color-inverse-primary: #c4c5dc;
+
+  /* Secondary (Amber) */
+  --color-secondary: #855300;
+  --color-secondary-container: #fea619;
+  --color-secondary-fixed: #ffddb8;
+  --color-secondary-fixed-dim: #ffb95f;
+  --color-on-secondary: #ffffff;
+  --color-on-secondary-container: #684000;
+  --color-on-secondary-fixed: #2a1700;
+  --color-on-secondary-fixed-variant: #653e00;
+
+  /* Tertiary */
+  --color-tertiary: #000000;
+  --color-tertiary-container: #291808;
+  --color-tertiary-fixed: #fedcc3;
+  --color-tertiary-fixed-dim: #e0c1a8;
+  --color-on-tertiary: #ffffff;
+  --color-on-tertiary-container: #9a7f69;
+  --color-on-tertiary-fixed: #291808;
+  --color-on-tertiary-fixed-variant: #584230;
+
+  /* Error */
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+  --color-on-error: #ffffff;
+  --color-on-error-container: #93000a;
+
+  /* On-colors */
+  --color-on-surface: #191c1d;
+  --color-on-surface-variant: #46464c;
+  --color-on-background: #191c1d;
+  --color-inverse-surface: #2e3132;
+  --color-inverse-on-surface: #f0f1f2;
+
+  /* Outline */
+  --color-outline: #77767d;
+  --color-outline-variant: #c7c5cd;
+
+  /* Typography */
+  --font-headline: "Newsreader", serif;
+  --font-body: "Manrope", sans-serif;
+  --font-label: "Manrope", sans-serif;
+}
+
 /* Material Symbols */
 .material-symbols-outlined {
   font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
