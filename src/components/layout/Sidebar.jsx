@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom'
+import { useAuth } from '../../lib/AuthContext'
 
 const sideItems = [
   { to: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
@@ -18,7 +19,16 @@ const sideItems = [
   { to: '/pyq', icon: 'history_edu', label: 'PYQ Bank' },
 ]
 
+const STREAK_REWARD_TARGET = 20 // Days needed for reward
+
 export default function Sidebar() {
+  const { profile } = useAuth()
+
+  // Calculate streak values
+  const streakDays = profile?.streak || 0
+  const daysRemaining = Math.max(0, STREAK_REWARD_TARGET - streakDays)
+  const streakPercentage = Math.min((streakDays / STREAK_REWARD_TARGET) * 100, 100)
+
   return (
     <aside className="fixed left-0 top-0 h-full flex flex-col pt-20 pb-6 w-64 z-40 bg-surface border-r border-outline hidden lg:flex">
       <div className="px-6 mb-8">
@@ -48,12 +58,19 @@ export default function Sidebar() {
         <div className="p-4 rounded-2xl bg-gradient-to-br from-secondary to-secondary-container text-on-secondary">
           <div className="flex items-center gap-2 mb-3">
             <span className="material-symbols-outlined text-xl">local_fire_department</span>
-            <p className="font-bold">12 Day Streak</p>
+            <p className="font-bold">{streakDays} Day Streak</p>
           </div>
           <div className="w-full bg-on-secondary/20 h-2 rounded-full overflow-hidden">
-            <div className="bg-on-secondary w-2/3 h-full rounded-full"></div>
+            <div
+              className="bg-on-secondary h-full rounded-full transition-all"
+              style={{ width: `${streakPercentage}%` }}
+            ></div>
           </div>
-          <p className="text-xs mt-2 opacity-90">Keep it up! 8 more days for reward</p>
+          <p className="text-xs mt-2 opacity-90">
+            {daysRemaining > 0
+              ? `Keep it up! ${daysRemaining} more ${daysRemaining === 1 ? 'day' : 'days'} for reward`
+              : 'Reward unlocked!'}
+          </p>
         </div>
       </div>
     </aside>
