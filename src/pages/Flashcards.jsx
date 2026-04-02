@@ -1,13 +1,17 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useProgress } from '../lib/useProgress'
 import { flashcards, flashcardCategories } from '../data/flashcards'
 
 export default function Flashcards() {
+  const { saveFlashcardProgress, earnXP } = useProgress()
   const [activeCategory, setActiveCategory] = useState('all')
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isFlipped, setIsFlipped] = useState(false)
   const [mastered, setMastered] = useState(new Set())
   const [review, setReview] = useState(new Set())
   const [sessionComplete, setSessionComplete] = useState(false)
+  const [totalMastered, setTotalMastered] = useState(0)
+  const [sessionStats, setSessionStats] = useState({ reviewed: 0, mastered: 0, toReview: 0 })
 
   const filteredCards = activeCategory === 'all'
     ? flashcards
@@ -16,13 +20,54 @@ export default function Flashcards() {
   const currentCard = filteredCards[currentIndex]
   const totalCards = filteredCards.length
 
-  const handleKnew = () => {
-    setMastered(new Set(mastered).add(currentCard.q))
+  // Load mastered cards from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('masteredCards')
+    if (saved) {
+      setTotalMastered(JSON.parse(saved).length)
+    }
+  }, [])
+
+  const handleKnew = async () => {
+    const updated = new Set(mastered).add(currentCard.q)
+    setMastered(updated)
+
+    // Save to progress and earn XP
+    await saveFlashcardProgress(currentCard.q || currentIndex, 'mastered')
+    await earnXP(2, 'flashcard_mastered')
+
+    // Update session stats
+    setSessionStats({
+      reviewed: sessionStats.reviewed + 1,
+      mastered: sessionStats.mastered + 1,
+      toReview: sessionStats.toReview
+    })
+
+    // Update total mastered in localStorage
+    const allMastered = JSON.parse(localStorage.getItem('masteredCards') || '[]')
+    if (!allMastered.includes(currentCard.q)) {
+      allMastered.push(currentCard.q)
+      localStorage.setItem('masteredCards', JSON.stringify(allMastered))
+      setTotalMastered(allMastered.length)
+    }
+
     moveNext()
   }
 
-  const handleReview = () => {
-    setReview(new Set(review).add(currentCard.q))
+  const handleReview = async () => {
+    const updated = new Set(review).add(currentCard.q)
+    setReview(updated)
+
+    // Save to progress
+    await saveFlashcardProgress(currentCard.q || currentIndex, 'review')
+
+    // Update session stats
+    setSessionStats({
+      reviewed: sessionStats.reviewed + 1,
+      mastered: sessionStats.mastered,
+      toReview: sessionStats.toReview + 1
+    })
+
     moveNext()
   }
 
@@ -41,6 +86,17 @@ export default function Flashcards() {
     setMastered(new Set())
     setReview(new Set())
     setSessionComplete(false)
+    setSessionStats({ reviewed: 0, mastered: 0, toReview: 0 })
+  }
+
+  const switchCategory = (catId) => {
+    setActiveCategory(catId)
+    setCurrentIndex(0)
+    setIsFlipped(false)
+    setMastered(new Set())
+    setReview(new Set())
+    setSessionComplete(false)
+    setSessionStats({ reviewed: 0, mastered: 0, toReview: 0 })
   }
 
   if (!currentCard) return null
@@ -62,12 +118,16 @@ export default function Flashcards() {
                 <span className="font-bold text-2xl text-[#060818]">{totalCards}</span>
               </div>
               <div className="flex justify-between items-center border-t border-slate-200 pt-4">
-                <span className="text-slate-600 font-medium">Mastered</span>
+                <span className="text-slate-600 font-medium">Mastered This Session</span>
                 <span className="font-bold text-2xl text-green-600">{mastered.size}</span>
               </div>
               <div className="flex justify-between items-center border-t border-slate-200 pt-4">
                 <span className="text-slate-600 font-medium">Review Again</span>
                 <span className="font-bold text-2xl text-amber-600">{review.size}</span>
+              </div>
+              <div className="flex justify-between items-center border-t border-slate-200 pt-4">
+                <span className="text-slate-600 font-medium">Total Mastered (All Time)</span>
+                <span className="font-bold text-2xl text-blue-600">{totalMastered + mastered.size}</span>
               </div>
             </div>
 
@@ -95,11 +155,7 @@ export default function Flashcards() {
           {flashcardCategories.map((cat) => (
             <button
               key={cat.id}
-              onClick={() => {
-                setActiveCategory(cat.id)
-                setCurrentIndex(0)
-                setIsFlipped(false)
-              }}
+              onClick={() => switchCategory(cat.id)}
               className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest transition-all ${
                 activeCategory === cat.id
                   ? 'bg-secondary text-white shadow-lg'
@@ -110,6 +166,30 @@ export default function Flashcards() {
               {cat.label}
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* Session Stats Bar */}
+      <div className="max-w-4xl mx-auto mb-8">
+        <div className="bg-gradient-to-r from-secondary/10 to-secondary-container/10 rounded-2xl p-6 border border-secondary/20">
+          <div className="grid grid-cols-4 gap-4">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-secondary mb-1">Reviewed</p>
+              <p className="font-headline text-2xl font-bold text-[#060818]">{sessionStats.reviewed}</p>
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-green-600 mb-1">Mastered</p>
+              <p className="font-headline text-2xl font-bold text-green-600">{sessionStats.mastered}</p>
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-amber-600 mb-1">Review</p>
+              <p className="font-headline text-2xl font-bold text-amber-600">{sessionStats.toReview}</p>
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-blue-600 mb-1">All Time</p>
+              <p className="font-headline text-2xl font-bold text-blue-600">{totalMastered + mastered.size}</p>
+            </div>
+          </div>
         </div>
       </div>
 
