@@ -1,12 +1,102 @@
+import { useState, useEffect } from 'react'
+import { useProgress } from '../lib/useProgress'
+
 export default function Dashboard() {
+  const { user, profile, getQuizHistoryForType, getFlashcardProgressForUser, getRecentUserActivity } = useProgress()
+
+  const [quizHistory, setQuizHistory] = useState([])
+  const [flashcardData, setFlashcardData] = useState([])
+  const [recentActivity, setRecentActivity] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!user) return
+    let cancelled = false
+
+    async function fetchData() {
+      setLoading(true)
+      const [quizzes, flashcards, activity] = await Promise.all([
+        getQuizHistoryForType(null), // all quiz types
+        getFlashcardProgressForUser(),
+        getRecentUserActivity(10)
+      ])
+      if (!cancelled) {
+        setQuizHistory(quizzes || [])
+        setFlashcardData(flashcards || [])
+        setRecentActivity(activity || [])
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+    return () => { cancelled = true }
+  }, [user])
+
+  // Compute metrics from real data
+  const xp = profile?.xp || 0
+  const streak = profile?.streak || 0
+  const displayName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Student'
+
+  // Mock score average
+  const mockScoreAvg = quizHistory.length > 0
+    ? Math.round(quizHistory.reduce((sum, q) => sum + q.score, 0) / quizHistory.length)
+    : 0
+  const mockScoreTotal = quizHistory.length > 0 ? quizHistory[0].total : 0
+
+  // Flashcards mastered
+  const flashcardsMastered = flashcardData.filter(f => f.status === 'mastered').length
+  const flashcardsTotal = flashcardData.length
+
+  // Recent quiz performance (last 7 quizzes)
+  const recentQuizzes = quizHistory.slice(0, 7)
+  const recentAvgPercent = recentQuizzes.length > 0
+    ? Math.round(recentQuizzes.reduce((sum, q) => sum + (q.score / q.total) * 100, 0) / recentQuizzes.length)
+    : 0
+
+  // Subject-wise progress from quiz types
+  const subjectMap = {}
+  quizHistory.forEach(q => {
+    const type = q.quiz_type || 'General'
+    if (!subjectMap[type]) subjectMap[type] = { total: 0, score: 0, count: 0 }
+    subjectMap[type].total += q.total
+    subjectMap[type].score += q.score
+    subjectMap[type].count += 1
+  })
+  const subjectProgress = Object.entries(subjectMap).map(([name, data]) => ({
+    name: name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+    value: Math.round((data.score / data.total) * 100)
+  }))
+
+  // Progress percentage (based on XP milestones â 1000 XP = 100%)
+  const overallProgress = Math.min(Math.round((xp / 1000) * 100), 100)
+
+  if (loading && user) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="text-center">
+          <span className="material-symbols-outlined text-secondary text-4xl animate-spin">progress_activity</span>
+          <p className="text-on-surface-variant mt-4 font-medium">Loading your dashboard...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <>
       {/* Hero Section */}
       <section className="relative rounded-[2rem] p-8 md:p-12 overflow-hidden mb-10 bg-gradient-to-br from-[#060818] to-[#1E293B] shadow-2xl">
         <div className="relative z-10 max-w-2xl">
-          <span className="inline-block px-3 py-1 bg-secondary text-on-secondary rounded-full text-[10px] font-bold uppercase tracking-widest mb-4">Welcome Back, Counselor</span>
-          <h1 className="font-headline text-4xl md:text-5xl lg:text-6xl text-white mb-6 leading-tight">Your path to NLSIU is 64% complete.</h1>
-          <p className="text-slate-300 text-lg mb-8 max-w-md font-body">Focus on Logical Reasoning today. You have 3 pending mocks and a constitutional brief to review.</p>
+          <span className="inline-block px-3 py-1 bg-secondary text-on-secondary rounded-full text-[10px] font-bold uppercase tracking-widest mb-4">Welcome Back, {displayName}</span>
+          <h1 className="font-headline text-4xl md:text-5xl lg:text-6xl text-white mb-6 leading-tight">
+            {overallProgress > 0
+              ? `Your journey is ${overallProgress}% strong.`
+              : 'Start your CLAT preparation today.'}
+          </h1>
+          <p className="text-slate-300 text-lg mb-8 max-w-md font-body">
+            {quizHistory.length > 0
+              ? `You've attempted ${quizHistory.length} quiz${quizHistory.length !== 1 ? 'zes' : ''} and earned ${xp} XP. ${streak > 0 ? `${streak}-day streak going!` : 'Start a streak today!'}`
+              : 'Take your first quiz, review flashcards, and build your streak.'}
+          </p>
           <div className="flex flex-wrap gap-4">
             <button className="bg-secondary text-on-secondary px-8 py-4 rounded-xl font-bold text-sm hover:bg-secondary-container transition-all shadow-[inset_0_-2px_0_rgba(0,0,0,0.1)]">
               RESUME STUDYING
@@ -21,24 +111,75 @@ export default function Dashboard() {
 
       {/* Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-        <MetricCard icon="timer" iconBg="bg-secondary-container/20" iconColor="text-secondary" badge="+12%" badgeColor="text-green-600 bg-green-50" label="Study Hours" value="42.5h" sub="v/s 38h last week" />
-        <MetricCard icon="fact_check" iconBg="bg-blue-100" iconColor="text-blue-600" badge="On Track" badgeColor="text-slate-400 bg-slate-50" label="Mock Score Avg" value="88/120" sub="Target: 105+" />
-        <MetricCard icon="psychology" iconBg="bg-purple-100" iconColor="text-purple-600" badge="+5" badgeColor="text-green-600 bg-green-50" label="Logic Accuracy" value="92%" sub="Peak performance" />
-        <MetricCard icon="trending_up" iconBg="bg-amber-100" iconColor="text-amber-600" badge="Rank #12" badgeColor="text-amber-600 bg-amber-50" label="Global Percentile" value="99.2" sub="Top 1% of Tribe" />
+        <MetricCard
+          icon="star"
+          iconBg="bg-secondary-container/20"
+          iconColor="text-secondary"
+          badge={xp > 0 ? `+${xp}` : 'â'}
+          badgeColor={xp > 0 ? 'text-green-600 bg-green-50' : 'text-slate-400 bg-slate-50'}
+          label="Total XP"
+          value={xp.toLocaleString()}
+          sub={xp > 0 ? 'Keep earning!' : 'Complete activities to earn XP'}
+        />
+        <MetricCard
+          icon="local_fire_department"
+          iconBg="bg-amber-100"
+          iconColor="text-amber-600"
+          badge={streak > 0 ? `${streak}d` : 'â'}
+          badgeColor={streak > 0 ? 'text-amber-600 bg-amber-50' : 'text-slate-400 bg-slate-50'}
+          label="Current Streak"
+          value={`${streak} day${streak !== 1 ? 's' : ''}`}
+          sub={streak > 0 ? 'Keep the fire burning!' : 'Log in daily to build a streak'}
+        />
+        <MetricCard
+          icon="fact_check"
+          iconBg="bg-blue-100"
+          iconColor="text-blue-600"
+          badge={quizHistory.length > 0 ? `${quizHistory.length} taken` : 'â'}
+          badgeColor={quizHistory.length > 0 ? 'text-blue-600 bg-blue-50' : 'text-slate-400 bg-slate-50'}
+          label="Mock Score Avg"
+          value={quizHistory.length > 0 ? `${mockScoreAvg}/${mockScoreTotal}` : 'â'}
+          sub={quizHistory.length > 0 ? `Across ${quizHistory.length} attempt${quizHistory.length !== 1 ? 's' : ''}` : 'Take a quiz to see your score'}
+        />
+        <MetricCard
+          icon="collections_bookmark"
+          iconBg="bg-purple-100"
+          iconColor="text-purple-600"
+          badge={flashcardsMastered > 0 ? `${flashcardsMastered}` : 'â'}
+          badgeColor={flashcardsMastered > 0 ? 'text-green-600 bg-green-50' : 'text-slate-400 bg-slate-50'}
+          label="Flashcards Mastered"
+          value={flashcardsTotal > 0 ? `${flashcardsMastered}/${flashcardsTotal}` : 'â'}
+          sub={flashcardsTotal > 0 ? `${Math.round((flashcardsMastered / flashcardsTotal) * 100)}% mastery rate` : 'Start reviewing flashcards'}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-        {/* Checklist & Daily Tasks */}
+        {/* Recent Activity & Tasks */}
         <div className="lg:col-span-2 space-y-8">
           <div>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="font-headline text-3xl text-on-surface">Today's Mandate</h2>
-              <button className="text-secondary font-bold text-xs uppercase tracking-widest hover:underline">View All Tasks</button>
+              <h2 className="font-headline text-3xl text-on-surface">Recent Activity</h2>
+              {recentActivity.length > 5 && (
+                <button className="text-secondary font-bold text-xs uppercase tracking-widest hover:underline">View All</button>
+              )}
             </div>
             <div className="space-y-4">
-              <TaskItem title="Analyze Supreme Court Judgment on Privacy" subtitle="Section: Legal Reasoning • 15 mins left" badge="URGENT" completed={false} />
-              <TaskItem title="Daily Logic Mock Test 04" subtitle="Section: Logical Reasoning • Completed" badge="+50 XP" completed={true} />
-              <TaskItem title="Solve 20 Critical Reasoning Passages" subtitle="Section: English • Starts at 4:00 PM" completed={false} />
+              {recentActivity.length > 0 ? (
+                recentActivity.slice(0, 5).map((activity, idx) => (
+                  <TaskItem
+                    key={activity.id || idx}
+                    title={formatActivityType(activity.type)}
+                    subtitle={formatActivityTime(activity.created_at)}
+                    badge={activity.xp_earned > 0 ? `+${activity.xp_earned} XP` : null}
+                    completed={true}
+                  />
+                ))
+              ) : (
+                <div className="p-8 bg-surface-container-lowest rounded-2xl border border-outline-variant text-center">
+                  <span className="material-symbols-outlined text-on-surface-variant/40 text-4xl mb-3 block">inbox</span>
+                  <p className="text-on-surface-variant/60 text-sm">No recent activity yet. Take a quiz or review flashcards to get started!</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -55,18 +196,28 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="bg-surface-container-low rounded-3xl p-8 flex flex-col">
-              <h3 className="font-headline text-2xl text-on-surface mb-4 italic">Legal Annotation</h3>
+              <h3 className="font-headline text-2xl text-on-surface mb-4 italic">Quick Stats</h3>
               <div className="flex-1 p-5 bg-surface-container-lowest rounded-2xl border-l-4 border-secondary shadow-sm">
-                <p className="font-headline text-lg text-on-surface-variant mb-4 italic leading-relaxed">"Stare decisis is at the heart of our system of justice. It promotes the evenhanded, predictable, and consistent development of legal principles..."</p>
-                <p className="text-xs font-bold text-on-surface-variant/60 uppercase tracking-widest">— Justice Samuel Alito</p>
+                <div className="space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-on-surface-variant">Quizzes Taken</span>
+                    <span className="font-bold text-on-surface">{quizHistory.length}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-on-surface-variant">Flashcards Reviewed</span>
+                    <span className="font-bold text-on-surface">{flashcardsTotal}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-on-surface-variant">Recent Accuracy</span>
+                    <span className="font-bold text-on-surface">{recentAvgPercent > 0 ? `${recentAvgPercent}%` : 'â'}</span>
+                  </div>
+                </div>
               </div>
               <div className="mt-6 flex items-center gap-4">
-                <div className="flex -space-x-2">
-                  <div className="w-8 h-8 rounded-full border-2 border-surface-container-low bg-slate-300"></div>
-                  <div className="w-8 h-8 rounded-full border-2 border-surface-container-low bg-slate-400"></div>
-                  <div className="w-8 h-8 rounded-full border-2 border-surface-container-low bg-slate-800 flex items-center justify-center text-[10px] text-white font-bold">+12</div>
-                </div>
-                <span className="text-xs text-on-surface-variant/60 font-medium">Discussing this now</span>
+                <span className="material-symbols-outlined text-secondary">trending_up</span>
+                <span className="text-xs text-on-surface-variant/60 font-medium">
+                  {quizHistory.length > 0 ? 'Based on your real performance data' : 'Stats will appear as you study'}
+                </span>
               </div>
             </div>
           </div>
@@ -74,33 +225,64 @@ export default function Dashboard() {
 
         {/* Right Sidebar */}
         <div className="space-y-8">
+          {/* Subject-wise Performance */}
           <div className="bg-surface-container-lowest p-8 rounded-[2rem] shadow-sm border border-outline-variant">
-            <h3 className="font-bold text-on-surface text-lg mb-6">Weekly Performance</h3>
-            <div className="space-y-6">
-              <ProgressBar label="Legal Aptitude" value={88} color="bg-secondary" textColor="text-secondary" />
-              <ProgressBar label="Current Affairs" value={62} color="bg-blue-500" textColor="text-blue-600" />
-              <ProgressBar label="Logical Reasoning" value={94} color="bg-purple-500" textColor="text-purple-600" />
-            </div>
+            <h3 className="font-bold text-on-surface text-lg mb-6">Subject Performance</h3>
+            {subjectProgress.length > 0 ? (
+              <div className="space-y-6">
+                {subjectProgress.slice(0, 5).map((subject, idx) => {
+                  const colors = ['bg-secondary', 'bg-blue-500', 'bg-purple-500', 'bg-green-500', 'bg-amber-500']
+                  const textColors = ['text-secondary', 'text-blue-600', 'text-purple-600', 'text-green-600', 'text-amber-600']
+                  return (
+                    <ProgressBar
+                      key={subject.name}
+                      label={subject.name}
+                      value={subject.value}
+                      color={colors[idx % colors.length]}
+                      textColor={textColors[idx % textColors.length]}
+                    />
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-6">
+                <span className="material-symbols-outlined text-on-surface-variant/30 text-3xl mb-2 block">bar_chart</span>
+                <p className="text-xs text-on-surface-variant/50">Take quizzes in different subjects to see your performance breakdown.</p>
+              </div>
+            )}
             <button className="w-full mt-8 py-4 bg-surface-container text-on-surface-variant text-xs font-bold uppercase tracking-widest rounded-xl hover:bg-surface-container-high transition-colors">
-              DOWNLOAD FULL REPORT
+              VIEW FULL ANALYTICS
             </button>
           </div>
 
+          {/* Streak Widget */}
           <div className="bg-[#060818] p-8 rounded-[2rem] shadow-xl relative overflow-hidden">
             <div className="relative z-10">
-              <h3 className="font-headline text-2xl text-white italic mb-6">Tribe Headlines</h3>
+              <h3 className="font-headline text-2xl text-white italic mb-6">Your Journey</h3>
               <div className="space-y-6">
-                <article className="group cursor-pointer">
-                  <p className="text-secondary text-[10px] font-bold uppercase tracking-widest mb-1">Breaking</p>
-                  <h4 className="text-white text-sm font-bold group-hover:text-secondary-container transition-colors">CLAT 2025: Notification Released. Everything you need to know.</h4>
-                  <p className="text-slate-500 text-[10px] mt-2 italic">Read by 4,200 candidates</p>
-                </article>
+                <div className="flex items-center gap-4">
+                  <span className="material-symbols-outlined text-secondary text-3xl">local_fire_department</span>
+                  <div>
+                    <p className="text-white font-bold text-2xl">{streak}</p>
+                    <p className="text-slate-400 text-xs">Day Streak</p>
+                  </div>
+                </div>
                 <div className="h-px bg-slate-800"></div>
-                <article className="group cursor-pointer">
-                  <p className="text-blue-400 text-[10px] font-bold uppercase tracking-widest mb-1">Scholarship</p>
-                  <h4 className="text-white text-sm font-bold group-hover:text-blue-300 transition-colors">Applications open for Tribal Excellence Grant 2024.</h4>
-                  <p className="text-slate-500 text-[10px] mt-2 italic">3 days left to apply</p>
-                </article>
+                <div className="flex items-center gap-4">
+                  <span className="material-symbols-outlined text-blue-400 text-3xl">star</span>
+                  <div>
+                    <p className="text-white font-bold text-2xl">{xp.toLocaleString()}</p>
+                    <p className="text-slate-400 text-xs">Total XP</p>
+                  </div>
+                </div>
+                <div className="h-px bg-slate-800"></div>
+                <div className="flex items-center gap-4">
+                  <span className="material-symbols-outlined text-green-400 text-3xl">fact_check</span>
+                  <div>
+                    <p className="text-white font-bold text-2xl">{quizHistory.length}</p>
+                    <p className="text-slate-400 text-xs">Quizzes Completed</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -117,6 +299,30 @@ export default function Dashboard() {
       </div>
     </>
   )
+}
+
+// Helpers
+function formatActivityType(type) {
+  if (!type) return 'Activity'
+  return type
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase())
+}
+
+function formatActivityTime(dateStr) {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  const now = new Date()
+  const diffMs = now - date
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMins / 60)
+  const diffDays = Math.floor(diffHours / 24)
+
+  if (diffMins < 1) return 'Just now'
+  if (diffMins < 60) return `${diffMins}m ago`
+  if (diffHours < 24) return `${diffHours}h ago`
+  if (diffDays < 7) return `${diffDays}d ago`
+  return date.toLocaleDateString()
 }
 
 function MetricCard({ icon, iconBg, iconColor, badge, badgeColor, label, value, sub }) {
@@ -143,8 +349,8 @@ function TaskItem({ title, subtitle, badge, completed }) {
           <span className="material-symbols-outlined text-white text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>check</span>
         </div>
         <div className="flex-1">
-          <h4 className="font-bold text-on-surface-variant/50 text-sm mb-0.5 line-through decoration-outline-variant">{title}</h4>
-          <p className="text-xs text-on-surface-variant/30">{subtitle}</p>
+          <h4 className="font-bold text-on-surface text-sm mb-0.5">{title}</h4>
+          <p className="text-xs text-on-surface-variant/60">{subtitle}</p>
         </div>
         {badge && <span className="px-3 py-1 bg-green-50 text-green-600 rounded-lg text-[10px] font-bold">{badge}</span>}
       </div>
