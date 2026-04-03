@@ -135,7 +135,6 @@ jobs:
               content: contentHtml,
               category: mcqData.category,
               source: editorial.source,
-              source_url: editorial.url,
               word_count: editorial.word_count,
               read_time_minutes: readTime,
               date: today
@@ -152,7 +151,9 @@ jobs:
               body: JSON.stringify(row)
             });
 
-            const [inserted] = await res.json();
+            const resBody = await res.json();
+            if (!res.ok) { console.error('Supabase insert error:', JSON.stringify(resBody)); return; }
+            const [inserted] = [resBody].flat();
             const editorialId = inserted.id;
 
             const mcqRows = mcqData.mcqs.map(m => ({
