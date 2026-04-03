@@ -26,8 +26,6 @@ jobs:
           const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
           const today = new Date().toISOString().split('T')[0];
 
-          // ---- SCRAPING FUNCTIONS ----
-
           async function fetchHTML(url) {
             const res = await fetch(url, {
               headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CLATTribeBot/1.0)' }
@@ -60,9 +58,9 @@ jobs:
                 const content = paragraphs.join('\n\n');
                 const wordCount = content.split(/\s+/).length;
                 editorials.push({ title, content, source: 'The Hindu', url, word_count: wordCount });
-                console.log(`  Hindu: ${title} (${wordCount} words)`);
+                console.log('  Hindu: ' + title + ' (' + wordCount + ' words)');
               } catch(e) {
-                console.error(`  Error scraping ${url}: ${e.message}`);
+                console.error('  Error scraping ' + url + ': ' + e.message);
               }
             }
             return editorials;
@@ -92,7 +90,7 @@ jobs:
                   if (text.length > 20) paragraphs.push(text);
                 });
                 if (paragraphs.length === 0) {
-                  $a('.full-details p').each((i, el) => {
+                  $a('.full-details p, article p').each((i, el) => {
                     const text = $a(el).text().trim();
                     if (text.length > 20) paragraphs.push(text);
                   });
@@ -100,43 +98,19 @@ jobs:
                 const content = paragraphs.join('\n\n');
                 const wordCount = content.split(/\s+/).length;
                 editorials.push({ title, content, source: 'The Indian Express', url, word_count: wordCount });
-                console.log(`  Express: ${title} (${wordCount} words)`);
+                console.log('  Express: ' + title + ' (' + wordCount + ' words)');
               } catch(e) {
-                console.error(`  Error scraping ${url}: ${e.message}`);
+                console.error('  Error scraping ' + url + ': ' + e.message);
               }
             }
             return editorials;
           }
 
-          // ---- GEMINI MCQ GENERATION ----
-
           async function generateMCQs(editorial) {
-            const prompt = `You are an expert CLAT exam question setter. Read this editorial and generate exactly 10 passage-based MCQs.
-
-          EDITORIAL TITLE: ${editorial.title}
-          SOURCE: ${editorial.source}
-          CONTENT:
-          ${editorial.content}
-
-          Return a JSON object with this exact structure:
-          {
-            "summary": "2-3 sentence summary of the editorial for CLAT students",
-            "category": "One of: Indian Polity, International Relations, Economy, Environment, Science & Tech, Social Issues, Governance, Legal & Judiciary",
-            "mcqs": [
-              {
-                "question_number": 1,
-                "question": "Question based on the editorial passage",
-                "options": { "a": "Option A", "b": "Option B", "c": "Option C", "d": "Option D" },
-                "correct_answer": "a",
-                "explanation": "Brief explanation"
-              }
-            ]
-          }
-
-          MCQs must test reading comprehension, inference, legal reasoning, or critical analysis. Every answer must be derivable from the passage.`;
+            const prompt = 'You are an expert CLAT exam question setter. Read this editorial and generate exactly 10 passage-based MCQs.\n\nEDITORIAL TITLE: ' + editorial.title + '\nSOURCE: ' + editorial.source + '\nCONTENT:\n' + editorial.content + '\n\nReturn a JSON object with this exact structure:\n{\n  "summary": "2-3 sentence summary of the editorial for CLAT students",\n  "category": "One of: Indian Polity, International Relations, Economy, Environment, Science & Tech, Social Issues, Governance, Legal & Judiciary",\n  "mcqs": [\n    {\n      "question_number": 1,\n      "question_text": "Question based on the editorial passage",\n      "option_a": "First option",\n      "option_b": "Second option",\n      "option_c": "Third option",\n      "option_d": "Fourth option",\n      "correct_option": "A",\n      "explanation": "Brief explanation"\n    }\n  ]\n}\n\ncorrect_option must be one of A, B, C, D (uppercase).\nMCQs must test reading comprehension, inference, legal reasoning, or critical analysis. Every answer must be derivable from the passage.';
 
             const resp = await fetch(
-              `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
+              'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=' + GEMINI_API_KEY,
               {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -151,11 +125,9 @@ jobs:
             return JSON.parse(text);
           }
 
-          // ---- SUPABASE INSERT ----
-
           async function insertEditorial(editorial, mcqData) {
-            const contentHtml = editorial.content.split('\n\n').map(p => `<p>${p}</p>`).join('');
-            const readTime = Math.ceil(editorial.word_count / 200);
+            const contentHtml = editorial.content.split('\n\n').map(p => '<p>' + p + '</p>').join('');
+            const readTime = Math.ceil(editorial.word_count / 100);
 
             const row = {
               title: editorial.title,
@@ -169,12 +141,12 @@ jobs:
               date: today
             };
 
-            const res = await fetch(`${SUPABASE_URL}/rest/v1/editorials`, {
+            const res = await fetch(SUPABASE_URL + '/rest/v1/editorials', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
                 'apikey': SUPABASE_KEY,
-                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Authorization': 'Bearer ' + SUPABASE_KEY,
                 'Prefer': 'return=representation'
               },
               body: JSON.stringify(row)
@@ -186,46 +158,47 @@ jobs:
             const mcqRows = mcqData.mcqs.map(m => ({
               editorial_id: editorialId,
               question_number: m.question_number,
-              question: m.question,
-              options: m.options,
-              correct_answer: m.correct_answer,
+              question_text: m.question_text,
+              option_a: m.option_a,
+              option_b: m.option_b,
+              option_c: m.option_c,
+              option_d: m.option_d,
+              correct_option: m.correct_option,
               explanation: m.explanation
             }));
 
-            await fetch(`${SUPABASE_URL}/rest/v1/editorial_mcqs`, {
+            await fetch(SUPABASE_URL + '/rest/v1/editorial_questions', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
                 'apikey': SUPABASE_KEY,
-                'Authorization': `Bearer ${SUPABASE_KEY}`
+                'Authorization': 'Bearer ' + SUPABASE_KEY
               },
               body: JSON.stringify(mcqRows)
             });
 
-            console.log(`  Inserted: ${editorial.title} + ${mcqData.mcqs.length} MCQs`);
+            console.log('  Inserted: ' + editorial.title + ' + ' + mcqData.mcqs.length + ' MCQs');
           }
 
-          // ---- MAIN ----
-
           async function main() {
-            console.log(`=== Generating editorials for ${today} ===`);
+            console.log('=== Generating editorials for ' + today + ' ===');
 
             const hinduEditorials = await scrapeHinduEditorials();
             const expressEditorials = await scrapeExpressEditorials();
             const allEditorials = [...hinduEditorials, ...expressEditorials];
 
-            console.log(`\nScraped ${allEditorials.length} editorials. Generating MCQs...\n`);
+            console.log('\nScraped ' + allEditorials.length + ' editorials. Generating MCQs...\n');
 
             for (const editorial of allEditorials) {
               try {
                 const mcqData = await generateMCQs(editorial);
                 await insertEditorial(editorial, mcqData);
               } catch(e) {
-                console.error(`Error processing "${editorial.title}": ${e.message}`);
+                console.error('Error processing "' + editorial.title + '": ' + e.message);
               }
             }
 
-            console.log(`\nDone! Inserted ${allEditorials.length} editorials for ${today}`);
+            console.log('\nDone! Inserted ' + allEditorials.length + ' editorials for ' + today);
           }
 
           main();
