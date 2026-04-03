@@ -1,58 +1,57 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { getDailyNewsByDate, getLatestNewsDate } from '../lib/progress'
+
+const categoryColors = {
+  'Legal': 'bg-blue-50 border-blue-200',
+  'Economy': 'bg-amber-50 border-amber-200',
+  'International': 'bg-green-50 border-green-200',
+  'Polity': 'bg-purple-50 border-purple-200',
+  'Science': 'bg-teal-50 border-teal-200',
+  'Environment': 'bg-emerald-50 border-emerald-200',
+  'General': 'bg-slate-50 border-slate-200',
+}
 
 export default function Highlights() {
   const [activeFilter, setActiveFilter] = useState('all')
+  const [newsCards, setNewsCards] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [lastUpdated, setLastUpdated] = useState(null)
+  const [categories, setCategories] = useState(['All'])
 
-  const newsCards = [
-    {
-      id: 1,
-      category: 'Legal',
-      headline: 'Supreme Court Digital Privacy Ruling Expands Article 21 Protections',
-      summary: 'Five-judge bench unanimously held that right to digital privacy is fundamental. Section 69A IT Act partially struck down for blanket shutdowns without judicial oversight.',
-      color: 'bg-blue-50 border-blue-200'
-    },
-    {
-      id: 2,
-      category: 'International',
-      headline: 'ICJ Declares Climate Change Mitigation a Binding State Obligation',
-      summary: 'Landmark advisory opinion votes 12-3 that states must reduce GHG emissions under customary law. Paris Agreement 1.5°C target declared binding benchmark.',
-      color: 'bg-green-50 border-green-200'
-    },
-    {
-      id: 3,
-      category: 'Economy',
-      headline: 'RBI Hikes Repo Rate by 25 bps Amid Food Inflation Concerns',
-      summary: 'Monetary Policy Committee votes 4-2 to raise Repo Rate to 7.0%. Food inflation at 8.2% cited as primary driver for third consecutive rate hike.',
-      color: 'bg-amber-50 border-amber-200'
-    },
-    {
-      id: 4,
-      category: 'Legal',
-      headline: 'Sedition Law Replaced: Section 124A IPC Gives Way to Narrower BNS 152',
-      summary: 'Criminal Laws Amendment Bill replaces broad sedition definition. New law requires actual incitement to violence, narrows government criticism liability.',
-      color: 'bg-purple-50 border-purple-200'
-    },
-    {
-      id: 5,
-      category: 'International',
-      headline: 'India Re-elected to UN Human Rights Council for 2027-2029 Term',
-      summary: 'Strong diplomatic victory with 184 votes in UNGA. Marks India\'s sixth term on 47-member human rights body, affirming standing on global stage.',
-      color: 'bg-rose-50 border-rose-200'
-    },
-    {
-      id: 6,
-      category: 'Legal',
-      headline: 'NGT Orders Vedanta to Restore Mangrove Habitat in Coastal Zone',
-      summary: 'Environmental tribunal applies polluter pays principle, invokes precautionary principle. Fine imposed for unauthorized construction in CRZ-I zone.',
-      color: 'bg-teal-50 border-teal-200'
+  useEffect(() => {
+    async function fetchNews() {
+      setLoading(true)
+      try {
+        const latestDate = await getLatestNewsDate()
+        if (!latestDate) {
+          setNewsCards([])
+          setLoading(false)
+          return
+        }
+
+        setLastUpdated(latestDate)
+        const news = await getDailyNewsByDate(latestDate)
+        setNewsCards(news)
+
+        const uniqueCats = [...new Set(news.map(n => n.category))]
+        setCategories(['All', ...uniqueCats])
+      } catch (err) {
+        console.error('Error loading news:', err)
+      }
+      setLoading(false)
     }
-  ]
+    fetchNews()
+  }, [])
 
   const filteredCards = activeFilter === 'all'
     ? newsCards
     : newsCards.filter(card => card.category.toLowerCase() === activeFilter.toLowerCase())
 
-  const categories = ['All', 'Legal', 'Economy', 'International']
+  const formatDate = (dateStr) => {
+    if (!dateStr) return ''
+    const d = new Date(dateStr + 'T00:00:00')
+    return d.toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })
+  }
 
   return (
     <div className="pt-6 px-0 md:px-2">
@@ -67,8 +66,8 @@ export default function Highlights() {
           </div>
           <div className="text-right">
             <p className="text-sm font-medium text-slate-600">Last updated</p>
-            <p className="text-xs font-bold text-secondary">March 31, 2026</p>
-            <p className="text-xs text-slate-500">at 9:00 AM IST</p>
+            <p className="text-xs font-bold text-secondary">{lastUpdated ? formatDate(lastUpdated) : '\u2014'}</p>
+            <p className="text-xs text-slate-500">at 6:00 AM IST</p>
           </div>
         </div>
 
@@ -78,11 +77,7 @@ export default function Highlights() {
             <button
               key={cat}
               onClick={() => setActiveFilter(cat.toLowerCase())}
-              className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest transition-all ${
-                activeFilter === cat.toLowerCase()
-                  ? 'bg-secondary text-white shadow-lg'
-                  : 'bg-surface-container-low text-slate-600 hover:bg-slate-200'
-              }`}
+              className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest transition-all ${activeFilter === cat.toLowerCase() ? 'bg-secondary text-white shadow-lg' : 'bg-surface-container-low text-slate-600 hover:bg-slate-200'}`}
             >
               {cat}
             </button>
@@ -90,46 +85,57 @@ export default function Highlights() {
         </div>
       </header>
 
-      {/* News Cards Grid */}
-      <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
-        {filteredCards.map((card) => (
-          <div
-            key={card.id}
-            className={`rounded-2xl p-6 border-2 shadow-sm hover:shadow-lg transition-all cursor-pointer group ${card.color}`}
-          >
-            {/* Category Badge */}
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-600 bg-white/60 px-3 py-1 rounded-full">
-                {card.category}
-              </span>
-              <span className="material-symbols-outlined text-slate-400 group-hover:text-slate-600 transition-colors">
-                arrow_outward
-              </span>
-            </div>
+      {loading && (
+        <div className="max-w-5xl mx-auto text-center py-16">
+          <span className="material-symbols-outlined text-6xl text-slate-300 mb-4 block animate-spin">progress_activity</span>
+          <p className="text-slate-600 font-medium">Loading today's news...</p>
+        </div>
+      )}
 
-            {/* Headline */}
-            <h3 className="font-headline text-lg font-bold text-slate-800 mb-3 group-hover:text-[#060818] transition-colors leading-tight">
-              {card.headline}
-            </h3>
+      {!loading && (
+        <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
+          {filteredCards.map((card) => (
+            <a
+              key={card.id}
+              href={card.source_url || '#'}
+              target={card.source_url ? '_blank' : '_self'}
+              rel="noopener noreferrer"
+              className={`rounded-2xl p-6 border-2 shadow-sm hover:shadow-lg transition-all cursor-pointer group ${categoryColors[card.category] || categoryColors['General']}`}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-600 bg-white/60 px-3 py-1 rounded-full">
+                    {card.category}
+                  </span>
+                  <span className="text-[10px] font-medium text-slate-500">
+                    {card.source}
+                  </span>
+                </div>
+                <span className="material-symbols-outlined text-slate-400 group-hover:text-slate-600 transition-colors">
+                  arrow_outward
+                </span>
+              </div>
 
-            {/* Summary */}
-            <p className="text-sm text-slate-700 leading-relaxed mb-4">
-              {card.summary}
-            </p>
+              <h3 className="font-headline text-lg font-bold text-slate-800 mb-3 group-hover:text-[#060818] transition-colors leading-tight">
+                {card.headline}
+              </h3>
 
-            {/* Read More */}
-            <div className="flex items-center gap-2 text-xs font-bold text-slate-600 group-hover:text-secondary transition-colors">
-              <span>Read More</span>
-              <span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">
-                trending_flat
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
+              <p className="text-sm text-slate-700 leading-relaxed mb-4">
+                {card.summary}
+              </p>
 
-      {/* Empty State */}
-      {filteredCards.length === 0 && (
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-600 group-hover:text-secondary transition-colors">
+                <span>Read More</span>
+                <span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">
+                  trending_flat
+                </span>
+              </div>
+            </a>
+          ))}
+        </div>
+      )}
+
+      {!loading && filteredCards.length === 0 && (
         <div className="max-w-5xl mx-auto text-center py-16">
           <span className="material-symbols-outlined text-6xl text-slate-300 mb-4 block">newspaper</span>
           <p className="text-slate-600 font-medium">No articles in this category yet.</p>
