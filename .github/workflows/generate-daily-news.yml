@@ -1,0 +1,235 @@
+name: Generate Daily News
+
+on:
+  schedule:
+    - cron: '30 0 * * *'  # 00:30 UTC = 6:00 AM IST
+  workflow_dispatch:
+
+jobs:
+  scrape-news:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scrape and insert daily news
+        uses: actions/github-script@v7
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        with:
+          script: |
+            const cheerio = require('cheerio');
+
+            const today = new Date().toISOString().split('T')[0];
+            console.log(`📰 Generating daily news for ${today}`);
+
+            // ── Helper: fetch HTML ──
+            async function fetchHTML(url) {
+              const res = await fetch(url, {
+                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+              });
+              if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+              return await res.text();
+            }
+
+            // ── Scrape The Hindu ──
+            async function scrapeHinduNews() {
+              const sections = [
+                { url: 'https://www.thehindu.com/news/national/', category: 'Legal' },
+                { url: 'https://www.thehindu.com/business/', category: 'Economy' },
+                { url: 'https://www.thehindu.com/news/international/', category: 'International' },
+                { url: 'https://www.thehindu.com/sci-tech/', category: 'Science' },
+              ];
+
+              const allArticles = [];
+
+              for (const section of sections) {
+                try {
+                  console.log(`  Fetching Hindu ${section.category}: ${section.url}`);
+                  const html = await fetchHTML(section.url);
+                  const $ = cheerio.load(html);
+
+                  const articles = [];
+                  $('a.story-card-news, a.story-card75x, a[href*="/article"], .element a[href*="/article"]').each((i, el) => {
+                    if (articles.length >= 3) return false;
+                    const $el = $(el);
+                    const href = $el.attr('href');
+                    const title = $el.find('h3, .title, .story-card-news-title').text().trim() || $el.text().trim();
+
+                    if (title && href && title.length > 15 && !articles.some(a => a.url === href)) {
+                      articles.push({
+                        headline: title.replace(/\s+/g, ' ').substring(0, 200),
+                        source_url: href.startsWith('http') ? href : `https://www.thehindu.com${href}`,
+                        category: section.category
+                      });
+                    }
+                  });
+
+                  console.log(`    Found ${articles.length} articles for ${section.category}`);
+                  allArticles.push(...articles);
+                } catch (err) {
+                  console.error(`  Error scraping Hindu ${section.category}:`, err.message);
+                }
+              }
+
+              return allArticles;
+            }
+
+            // ── Scrape Indian Express ──
+            async function scrapeExpressNews() {
+              const sections = [
+                { url: 'https://indianexpress.com/section/india/', category: 'Legal' },
+                { url: 'https://indianexpress.com/section/business/', category: 'Economy' },
+                { url: 'https://indianexpress.com/section/world/', category: 'International' },
+                { url: 'https://indianexpress.com/section/technology/', category: 'Science' },
+              ];
+
+              const allArticles = [];
+
+              for (const section of sections) {
+                try {
+                  console.log(`  Fetching Express ${section.category}: ${section.url}`);
+                  const html = await fetchHTML(section.url);
+                  const $ = cheerio.load(html);
+
+                  const articles = [];
+                  $('h2 a, h3 a, .title a, .articles a[href*="indianexpress.com"]').each((i, el) => {
+                    if (articles.length >= 3) return false;
+                    const $el = $(el);
+                    const href = $el.attr('href');
+                    const title = $el.text().trim();
+
+                    if (title && href && title.length > 15 && href.includes('indianexpress.com') && !articles.some(a => a.url === href)) {
+                      articles.push({
+                        headline: title.replace(/\s+/g, ' ').substring(0, 200),
+                        source_url: href,
+                        category: section.category
+                      });
+                    }
+                  });
+
+                  console.log(`    Found ${articles.length} articles for ${section.category}`);
+                  allArticles.push(...articles);
+                } catch (err) {
+                  console.error(`  Error scraping Express ${section.category}:`, err.message);
+                }
+              }
+
+              return allArticles;
+            }
+
+            // ── Generate summaries using Gemini ──
+            async function generateSummaries(articles) {
+              const prompt = `You are a news summarizer for CLAT (law entrance exam) aspirants in India.
+              Given the following news headlines, generate a 1-2 sentence summary for each that is relevant for CLAT GK preparation.
+              Focus on legal, constitutional, economic, and international significance.
+
+              Return a JSON array where each element has: "headline" (exact same as input), "summary" (1-2 sentences, max 200 chars).
+
+              Headlines:
+              ${articles.map((a, i) => `${i+1}. ${a.headline}`).join('\n')}`;
+
+              const geminiRes = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`,
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: {
+                      responseMimeType: 'application/json',
+                      responseSchema: {
+                        type: 'ARRAY',
+                        items: {
+                          type: 'OBJECT',
+                          properties: {
+                            headline: { type: 'STRING' },
+                            summary: { type: 'STRING' }
+                          },
+                          required: ['headline', 'summary']
+                        }
+                      }
+                    }
+                  })
+                }
+              );
+
+              if (!geminiRes.ok) {
+                const errText = await geminiRes.text();
+                throw new Error(`Gemini API error: ${geminiRes.status} - ${errText}`);
+              }
+
+              const geminiData = await geminiRes.json();
+              const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (!text) throw new Error('No text in Gemini response');
+
+              return JSON.parse(text);
+            }
+
+            // ── Main execution ──
+            try {
+              // Scrape both sources
+              const hinduArticles = await scrapeHinduNews();
+              const expressArticles = await scrapeExpressNews();
+
+              console.log(`\n📊 Hindu: ${hinduArticles.length} articles, Express: ${expressArticles.length} articles`);
+
+              const allArticles = [
+                ...hinduArticles.map(a => ({ ...a, source: 'The Hindu' })),
+                ...expressArticles.map(a => ({ ...a, source: 'The Indian Express' }))
+              ];
+
+              if (allArticles.length === 0) {
+                console.log('⚠️ No articles found. Exiting.');
+                return;
+              }
+
+              // Generate summaries via Gemini
+              console.log('\n🤖 Generating summaries via Gemini...');
+              const summaries = await generateSummaries(allArticles);
+              console.log(`  Got ${summaries.length} summaries`);
+
+              // Merge summaries back into articles
+              const newsRows = allArticles.map((article, idx) => {
+                const matchedSummary = summaries.find(s => s.headline === article.headline);
+                return {
+                  news_date: today,
+                  source: article.source,
+                  category: article.category,
+                  headline: article.headline,
+                  summary: matchedSummary?.summary || `Key news from ${article.source} on ${article.category}.`,
+                  source_url: article.source_url,
+                  is_active: true
+                };
+              });
+
+              // Insert into Supabase
+              console.log(`\n💾 Inserting ${newsRows.length} news articles into Supabase...`);
+
+              const insertRes = await fetch(
+                `${process.env.SUPABASE_URL}/rest/v1/daily_news`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY,
+                    'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+                    'Prefer': 'return=representation,resolution=merge-duplicates'
+                  },
+                  body: JSON.stringify(newsRows)
+                }
+              );
+
+              if (!insertRes.ok) {
+                const errBody = await insertRes.text();
+                throw new Error(`Supabase insert failed: ${insertRes.status} - ${errBody}`);
+              }
+
+              const inserted = await insertRes.json();
+              console.log(`✅ Successfully inserted ${inserted.length} news articles for ${today}`);
+              console.log('Categories:', [...new Set(inserted.map(r => r.category))].join(', '));
+              console.log('Sources:', [...new Set(inserted.map(r => r.source))].join(', '));
+
+            } catch (err) {
+              console.error('❌ Fatal error:', err.message);
+              process.exit(1);
+            }
