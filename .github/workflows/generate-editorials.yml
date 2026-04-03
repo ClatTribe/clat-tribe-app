@@ -1,0 +1,139 @@
+name: Generate Daily Editorials
+
+on:
+  schedule:
+    - cron: '30 0 * * *'  # 00:30 UTC = 6:00 AM IST
+  workflow_dispatch: {}
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate and insert editorials
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          cat << 'SCRIPT' > generate.mjs
+          const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+          const SUPABASE_URL = process.env.SUPABASE_URL;
+          const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+          const today = new Date().toISOString().split('T')[0];
+
+          const sources = [
+            { name: 'The Hindu', count: 2 },
+            { name: 'The Indian Express', count: 2 }
+          ];
+
+          const categories = [
+            'Indian Polity', 'International Relations', 'Economy',
+            'Environment', 'Science & Tech', 'Social Issues',
+            'Governance', 'Legal & Judiciary'
+          ];
+
+          async function generateEditorial(source, index) {
+            const cat = categories[Math.floor(Math.random() * categories.length)];
+            const prompt = `You are an expert CLAT exam editorial writer. Generate a detailed editorial analysis suitable for CLAT preparation.
+
+          Source: ${source}
+          Category: ${cat}
+          Date: ${today}
+
+          Return a JSON object with this exact structure:
+          {
+            "title": "Editorial title (50-80 chars)",
+            "summary": "2-3 sentence summary of the editorial",
+            "content": "Full editorial content, 800-1000 words, with proper paragraphs. Use <p> tags for paragraphs and <h3> tags for subheadings.",
+            "category": "${cat}",
+            "source": "${source}",
+            "word_count": 900,
+            "read_time_minutes": 9,
+            "mcqs": [
+              {
+                "question_number": 1,
+                "question": "Question text based on the editorial passage",
+                "options": { "a": "Option A", "b": "Option B", "c": "Option C", "d": "Option D" },
+                "correct_answer": "a",
+                "explanation": "Brief explanation of why this is correct"
+              }
+            ]
+          }
+
+          Generate exactly 10 MCQs. Each MCQ must be passage-based and test reading comprehension, legal reasoning, or critical analysis skills relevant to CLAT.`;
+
+            const resp = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [{ parts: [{ text: prompt }] }],
+                  generationConfig: { responseMimeType: 'application/json' }
+                })
+              }
+            );
+
+            const data = await resp.json();
+            const text = data.candidates[0].content.parts[0].text;
+            return JSON.parse(text);
+          }
+
+          async function insertEditorial(editorial) {
+            const { mcqs, ...editorialData } = editorial;
+            editorialData.date = today;
+
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/editorials`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Prefer': 'return=representation'
+              },
+              body: JSON.stringify(editorialData)
+            });
+
+            const [inserted] = await res.json();
+            const editorialId = inserted.id;
+
+            const mcqRows = mcqs.map(m => ({
+              editorial_id: editorialId,
+              question_number: m.question_number,
+              question: m.question,
+              options: m.options,
+              correct_answer: m.correct_answer,
+              explanation: m.explanation
+            }));
+
+            await fetch(`${SUPABASE_URL}/rest/v1/editorial_mcqs`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+              },
+              body: JSON.stringify(mcqRows)
+            });
+
+            console.log(`Inserted: ${editorial.title} (${mcqs.length} MCQs)`);
+          }
+
+          async function main() {
+            console.log(`Generating editorials for ${today}...`);
+            for (const src of sources) {
+              for (let i = 0; i < src.count; i++) {
+                try {
+                  const editorial = await generateEditorial(src.name, i);
+                  await insertEditorial(editorial);
+                } catch (err) {
+                  console.error(`Error generating ${src.name} #${i+1}:`, err.message);
+                }
+              }
+            }
+            console.log('Done!');
+          }
+
+          main();
+          SCRIPT
+          node generate.mjs
