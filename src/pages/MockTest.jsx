@@ -624,7 +624,7 @@ export default function MockTest() {
                 >
                   <div className="flex items-start gap-4 mb-4">
                     <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${isCorrect ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
-                      {isCorrect ? 'â' : 'â'}
+                      {isCorrect ? '✓' : '✗'}
                     </div>
                     <div className="flex-1">
                       <h3 className="text-on-surface mb-2 leading-relaxed">{q.questionText}</h3>
