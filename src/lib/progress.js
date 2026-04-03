@@ -364,6 +364,48 @@ export async function getAvailableEditorialDates(limit = 30) {
   }
 }
 
+// Daily News
+
+export async function getDailyNewsByDate(date) {
+  try {
+    const { data, error } = await supabase
+      .from('daily_news')
+      .select('*')
+      .eq('news_date', date)
+      .eq('is_active', true)
+      .order('category', { ascending: true })
+
+    if (error) {
+      console.error('Error fetching daily news:', error)
+      return []
+    }
+    return data || []
+  } catch (err) {
+    console.error('Exception in getDailyNewsByDate:', err)
+    return []
+  }
+}
+
+export async function getLatestNewsDate() {
+  try {
+    const { data, error } = await supabase
+      .from('daily_news')
+      .select('news_date')
+      .eq('is_active', true)
+      .order('news_date', { ascending: false })
+      .limit(1)
+
+    if (error) {
+      console.error('Error fetching latest news date:', error)
+      return null
+    }
+    return data?.[0]?.news_date || null
+  } catch (err) {
+    console.error('Exception in getLatestNewsDate:', err)
+    return null
+  }
+}
+
 export async function getRecentActivity(userId, limit = 20) {
   try {
     if (!userId) return []
