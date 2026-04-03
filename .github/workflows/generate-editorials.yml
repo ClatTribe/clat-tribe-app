@@ -9,58 +9,131 @@ jobs:
   generate:
     runs-on: ubuntu-latest
     steps:
-      - name: Generate and insert editorials
+      - name: Install cheerio
+        run: npm install cheerio
+
+      - name: Scrape editorials and generate MCQs
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           cat << 'SCRIPT' > generate.mjs
+          import * as cheerio from 'cheerio';
+
           const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
           const SUPABASE_URL = process.env.SUPABASE_URL;
           const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
           const today = new Date().toISOString().split('T')[0];
 
-          const sources = [
-            { name: 'The Hindu', count: 2 },
-            { name: 'The Indian Express', count: 2 }
-          ];
+          // ---- SCRAPING FUNCTIONS ----
 
-          const categories = [
-            'Indian Polity', 'International Relations', 'Economy',
-            'Environment', 'Science & Tech', 'Social Issues',
-            'Governance', 'Legal & Judiciary'
-          ];
+          async function fetchHTML(url) {
+            const res = await fetch(url, {
+              headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CLATTribeBot/1.0)' }
+            });
+            return await res.text();
+          }
 
-          async function generateEditorial(source, index) {
-            const cat = categories[Math.floor(Math.random() * categories.length)];
-            const prompt = `You are an expert CLAT exam editorial writer. Generate a detailed editorial analysis suitable for CLAT preparation.
+          async function scrapeHinduEditorials() {
+            console.log('Scraping The Hindu editorials...');
+            const html = await fetchHTML('https://www.thehindu.com/opinion/editorial/');
+            const $ = cheerio.load(html);
+            const links = [];
+            $('a').each((i, el) => {
+              const href = $(el).attr('href');
+              if (href && href.match(/thehindu\.com\/opinion\/editorial\/[a-z]/) && href.includes('article')) {
+                if (!links.includes(href)) links.push(href);
+              }
+            });
+            const editorials = [];
+            for (const url of links.slice(0, 2)) {
+              try {
+                const artHtml = await fetchHTML(url);
+                const $a = cheerio.load(artHtml);
+                const title = $a('h1').first().text().trim();
+                const paragraphs = [];
+                $a('article p').each((i, el) => {
+                  const text = $a(el).text().trim();
+                  if (text.length > 20) paragraphs.push(text);
+                });
+                const content = paragraphs.join('\n\n');
+                const wordCount = content.split(/\s+/).length;
+                editorials.push({ title, content, source: 'The Hindu', url, word_count: wordCount });
+                console.log(`  Hindu: ${title} (${wordCount} words)`);
+              } catch(e) {
+                console.error(`  Error scraping ${url}: ${e.message}`);
+              }
+            }
+            return editorials;
+          }
 
-          Source: ${source}
-          Category: ${cat}
-          Date: ${today}
+          async function scrapeExpressEditorials() {
+            console.log('Scraping Indian Express editorials...');
+            const html = await fetchHTML('https://indianexpress.com/section/opinion/editorials/');
+            const $ = cheerio.load(html);
+            const links = [];
+            $('a').each((i, el) => {
+              const href = $(el).attr('href');
+              if (href && href.match(/indianexpress\.com\/article\/opinion\/editorials\//)) {
+                if (!links.includes(href)) links.push(href);
+              }
+            });
+            const editorials = [];
+            for (const url of links.slice(0, 2)) {
+              try {
+                const artHtml = await fetchHTML(url);
+                const $a = cheerio.load(artHtml);
+                const rawTitle = $a('h1').first().text().trim();
+                const title = rawTitle.replace(/^Opinion\s*/i, '').trim();
+                const paragraphs = [];
+                $a('#pcl-full-content p').each((i, el) => {
+                  const text = $a(el).text().trim();
+                  if (text.length > 20) paragraphs.push(text);
+                });
+                if (paragraphs.length === 0) {
+                  $a('.full-details p').each((i, el) => {
+                    const text = $a(el).text().trim();
+                    if (text.length > 20) paragraphs.push(text);
+                  });
+                }
+                const content = paragraphs.join('\n\n');
+                const wordCount = content.split(/\s+/).length;
+                editorials.push({ title, content, source: 'The Indian Express', url, word_count: wordCount });
+                console.log(`  Express: ${title} (${wordCount} words)`);
+              } catch(e) {
+                console.error(`  Error scraping ${url}: ${e.message}`);
+              }
+            }
+            return editorials;
+          }
+
+          // ---- GEMINI MCQ GENERATION ----
+
+          async function generateMCQs(editorial) {
+            const prompt = `You are an expert CLAT exam question setter. Read this editorial and generate exactly 10 passage-based MCQs.
+
+          EDITORIAL TITLE: ${editorial.title}
+          SOURCE: ${editorial.source}
+          CONTENT:
+          ${editorial.content}
 
           Return a JSON object with this exact structure:
           {
-            "title": "Editorial title (50-80 chars)",
-            "summary": "2-3 sentence summary of the editorial",
-            "content": "Full editorial content, 800-1000 words, with proper paragraphs. Use <p> tags for paragraphs and <h3> tags for subheadings.",
-            "category": "${cat}",
-            "source": "${source}",
-            "word_count": 900,
-            "read_time_minutes": 9,
+            "summary": "2-3 sentence summary of the editorial for CLAT students",
+            "category": "One of: Indian Polity, International Relations, Economy, Environment, Science & Tech, Social Issues, Governance, Legal & Judiciary",
             "mcqs": [
               {
                 "question_number": 1,
-                "question": "Question text based on the editorial passage",
+                "question": "Question based on the editorial passage",
                 "options": { "a": "Option A", "b": "Option B", "c": "Option C", "d": "Option D" },
                 "correct_answer": "a",
-                "explanation": "Brief explanation of why this is correct"
+                "explanation": "Brief explanation"
               }
             ]
           }
 
-          Generate exactly 10 MCQs. Each MCQ must be passage-based and test reading comprehension, legal reasoning, or critical analysis skills relevant to CLAT.`;
+          MCQs must test reading comprehension, inference, legal reasoning, or critical analysis. Every answer must be derivable from the passage.`;
 
             const resp = await fetch(
               `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
@@ -73,15 +146,28 @@ jobs:
                 })
               }
             );
-
             const data = await resp.json();
             const text = data.candidates[0].content.parts[0].text;
             return JSON.parse(text);
           }
 
-          async function insertEditorial(editorial) {
-            const { mcqs, ...editorialData } = editorial;
-            editorialData.date = today;
+          // ---- SUPABASE INSERT ----
+
+          async function insertEditorial(editorial, mcqData) {
+            const contentHtml = editorial.content.split('\n\n').map(p => `<p>${p}</p>`).join('');
+            const readTime = Math.ceil(editorial.word_count / 200);
+
+            const row = {
+              title: editorial.title,
+              summary: mcqData.summary,
+              content: contentHtml,
+              category: mcqData.category,
+              source: editorial.source,
+              source_url: editorial.url,
+              word_count: editorial.word_count,
+              read_time_minutes: readTime,
+              date: today
+            };
 
             const res = await fetch(`${SUPABASE_URL}/rest/v1/editorials`, {
               method: 'POST',
@@ -91,13 +177,13 @@ jobs:
                 'Authorization': `Bearer ${SUPABASE_KEY}`,
                 'Prefer': 'return=representation'
               },
-              body: JSON.stringify(editorialData)
+              body: JSON.stringify(row)
             });
 
             const [inserted] = await res.json();
             const editorialId = inserted.id;
 
-            const mcqRows = mcqs.map(m => ({
+            const mcqRows = mcqData.mcqs.map(m => ({
               editorial_id: editorialId,
               question_number: m.question_number,
               question: m.question,
@@ -116,22 +202,30 @@ jobs:
               body: JSON.stringify(mcqRows)
             });
 
-            console.log(`Inserted: ${editorial.title} (${mcqs.length} MCQs)`);
+            console.log(`  Inserted: ${editorial.title} + ${mcqData.mcqs.length} MCQs`);
           }
 
+          // ---- MAIN ----
+
           async function main() {
-            console.log(`Generating editorials for ${today}...`);
-            for (const src of sources) {
-              for (let i = 0; i < src.count; i++) {
-                try {
-                  const editorial = await generateEditorial(src.name, i);
-                  await insertEditorial(editorial);
-                } catch (err) {
-                  console.error(`Error generating ${src.name} #${i+1}:`, err.message);
-                }
+            console.log(`=== Generating editorials for ${today} ===`);
+
+            const hinduEditorials = await scrapeHinduEditorials();
+            const expressEditorials = await scrapeExpressEditorials();
+            const allEditorials = [...hinduEditorials, ...expressEditorials];
+
+            console.log(`\nScraped ${allEditorials.length} editorials. Generating MCQs...\n`);
+
+            for (const editorial of allEditorials) {
+              try {
+                const mcqData = await generateMCQs(editorial);
+                await insertEditorial(editorial, mcqData);
+              } catch(e) {
+                console.error(`Error processing "${editorial.title}": ${e.message}`);
               }
             }
-            console.log('Done!');
+
+            console.log(`\nDone! Inserted ${allEditorials.length} editorials for ${today}`);
           }
 
           main();
