@@ -249,6 +249,121 @@ export async function logActivity(userId, type, xpEarned, metadata) {
   }
 }
 
+// Editorials
+
+export async function getEditorialsByDate(date) {
+  try {
+    const { data, error } = await supabase
+      .from('editorials')
+      .select('*')
+      .eq('date', date)
+      .order('source', { ascending: true })
+
+    if (error) {
+      console.error('Error fetching editorials:', error)
+      return []
+    }
+    return data || []
+  } catch (err) {
+    console.error('Exception in getEditorialsByDate:', err)
+    return []
+  }
+}
+
+export async function getEditorialQuestions(editorialId) {
+  try {
+    if (!editorialId) return []
+    const { data, error } = await supabase
+      .from('editorial_questions')
+      .select('*')
+      .eq('editorial_id', editorialId)
+      .order('question_number', { ascending: true })
+
+    if (error) {
+      console.error('Error fetching editorial questions:', error)
+      return []
+    }
+    return data || []
+  } catch (err) {
+    console.error('Exception in getEditorialQuestions:', err)
+    return []
+  }
+}
+
+export async function saveEditorialAttempt(userId, editorialId, score, total, answers, timeTaken) {
+  try {
+    if (!userId || !editorialId) return null
+    const { data, error } = await supabase
+      .from('user_editorial_attempts')
+      .insert({
+        user_id: userId,
+        editorial_id: editorialId,
+        score,
+        total,
+        answers: answers || null,
+        time_taken: timeTaken || 0,
+        attempted_at: new Date().toISOString()
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error saving editorial attempt:', error)
+      return null
+    }
+    return data
+  } catch (err) {
+    console.error('Exception in saveEditorialAttempt:', err)
+    return null
+  }
+}
+
+export async function getUserEditorialAttempts(userId, editorialId) {
+  try {
+    if (!userId) return []
+    let query = supabase
+      .from('user_editorial_attempts')
+      .select('*')
+      .eq('user_id', userId)
+
+    if (editorialId) {
+      query = query.eq('editorial_id', editorialId)
+    }
+
+    const { data, error } = await query.order('attempted_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching editorial attempts:', error)
+      return []
+    }
+    return data || []
+  } catch (err) {
+    console.error('Exception in getUserEditorialAttempts:', err)
+    return []
+  }
+}
+
+export async function getAvailableEditorialDates(limit = 30) {
+  try {
+    const { data, error } = await supabase
+      .from('editorials')
+      .select('date')
+      .order('date', { ascending: false })
+      .limit(limit * 4) // 4 editorials per day
+
+    if (error) {
+      console.error('Error fetching editorial dates:', error)
+      return []
+    }
+    // Deduplicate dates
+    const uniqueDates = [...new Set((data || []).map(d => d.date))]
+    return uniqueDates.slice(0, limit)
+  } catch (err) {
+    console.error('Exception in getAvailableEditorialDates:', err)
+    return []
+  }
+}
+
 export async function getRecentActivity(userId, limit = 20) {
   try {
     if (!userId) return []
