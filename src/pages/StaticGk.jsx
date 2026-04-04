@@ -35,7 +35,7 @@ export default function StaticGk() {
       {/* Header */}
       <div className="max-w-5xl mx-auto mb-12">
         <p className="text-xs font-bold uppercase tracking-widest text-secondary mb-2">Static Knowledge</p>
-        <h1 className="font-headline text-5xl md:text-6xl font-bold text-[#060818] mb-8">General Knowledge Bank</h1>
+        <h1 className="font-headline text-5xl md:text-6xl font-bold text-white mb-8">General Knowledge Bank</h1>
 
         {/* Search Bar */}
         <div className="relative mb-8">
