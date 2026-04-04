@@ -20,9 +20,9 @@ jobs:
             const cheerio = require('cheerio');
 
             const today = new Date().toISOString().split('T')[0];
-            console.log(`ð° Generating daily news for ${today}`);
+            console.log(`📰 Generating daily news for ${today}`);
 
-            // ââ Helper: fetch HTML ââ
+            // ── Helper: fetch HTML ──
             async function fetchHTML(url) {
               const res = await fetch(url, {
                 headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
@@ -31,7 +31,7 @@ jobs:
               return await res.text();
             }
 
-            // ââ Scrape The Hindu ââ
+            // ── Scrape The Hindu ──
             async function scrapeHinduNews() {
               const sections = [
                 { url: 'https://www.thehindu.com/news/national/', category: 'Legal' },
@@ -74,7 +74,7 @@ jobs:
               return allArticles;
             }
 
-            // ââ Scrape Indian Express ââ
+            // ── Scrape Indian Express ──
             async function scrapeExpressNews() {
               const sections = [
                 { url: 'https://indianexpress.com/section/india/', category: 'Legal' },
@@ -117,7 +117,7 @@ jobs:
               return allArticles;
             }
 
-            // ââ Generate summaries using Gemini ââ
+            // ── Generate summaries using Gemini ──
             async function generateSummaries(articles) {
               const prompt = `You are a news summarizer for CLAT (law entrance exam) aspirants in India.
               Given the following news headlines, generate a 1-2 sentence summary for each that is relevant for CLAT GK preparation.
@@ -159,19 +159,18 @@ jobs:
               }
 
               const geminiData = await geminiRes.json();
-              const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
-              if (!text) throw new Error('No text in Gemini response');
+              const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;      if (!text) throw new Error('No text in Gemini response');
 
               return JSON.parse(text);
             }
 
-            // ââ Main execution ââ
+            // ── Main execution ──
             try {
               // Scrape both sources
               const hinduArticles = await scrapeHinduNews();
               const expressArticles = await scrapeExpressNews();
 
-              console.log(`\nð Hindu: ${hinduArticles.length} articles, Express: ${expressArticles.length} articles`);
+              console.log(`\n📊 Hindu: ${hinduArticles.length} articles, Express: ${expressArticles.length} articles`);
 
               const allArticles = [
                 ...hinduArticles.map(a => ({ ...a, source: 'The Hindu' })),
@@ -179,12 +178,12 @@ jobs:
               ];
 
               if (allArticles.length === 0) {
-                console.log('â ï¸ No articles found. Exiting.');
+                console.log('⚠️ No articles found. Exiting.');
                 return;
               }
 
               // Generate summaries via Gemini
-              console.log('\nð¤ Generating summaries via Gemini...');
+              console.log('\n🤖 Generating summaries via Gemini...');
               const summaries = await generateSummaries(allArticles);
               console.log(`  Got ${summaries.length} summaries`);
 
@@ -203,7 +202,7 @@ jobs:
               });
 
               // Insert into Supabase
-              console.log(`\nð¾ Inserting ${newsRows.length} news articles into Supabase...`);
+              console.log(`\n💾 Inserting ${newsRows.length} news articles into Supabase...`);
 
               const insertRes = await fetch(
                 `${process.env.SUPABASE_URL}/rest/v1/daily_news`,
@@ -225,12 +224,12 @@ jobs:
               }
 
               const inserted = await insertRes.json();
-              console.log(`â Successfully inserted ${inserted.length} news articles for ${today}`);
+              console.log(`✅ Successfully inserted ${inserted.length} news articles for ${today}`);
               console.log('Categories:', [...new Set(inserted.map(r => r.category))].join(', '));
               console.log('Sources:', [...new Set(inserted.map(r => r.source))].join(', '));
 
             } catch (err) {
-              console.error('â Fatal error:', err.message);
+              console.error('❌ Fatal error:', err.message);
               process.exit(1);
             }
 
@@ -246,7 +245,7 @@ jobs:
         with:
           script: |
             const today = new Date().toISOString().split('T')[0];
-            console.log(`ð Ensuring daily_mock_tests table exists for ${today}`);
+            console.log(`📋 Ensuring daily_mock_tests table exists for ${today}`);
 
             // SQL to create the table if it doesn't exist
             const createTableSQL = `
@@ -285,7 +284,7 @@ jobs:
               if (!tableRes.ok) {
                 console.log('Note: Table may already exist or RPC not available. Proceeding with insert.');
               } else {
-                console.log('â Table created or verified');
+                console.log('✅ Table created or verified');
               }
             } catch (err) {
               console.log('Note: Proceeding with insert. Table may already exist.');
@@ -300,9 +299,9 @@ jobs:
         with:
           script: |
             const today = new Date().toISOString().split('T')[0];
-            console.log(`ð§  Generating mock test questions for ${today}`);
+            console.log(`🧠 Generating mock test questions for ${today}`);
 
-            // ââ Fetch today's news articles from Supabase ââ
+            // ── Fetch today's news articles from Supabase ──
             async function fetchTodaysNews() {
               const newsRes = await fetch(
                 `${process.env.SUPABASE_URL}/rest/v1/daily_news?news_date=eq.${today}&is_active=eq.true`,
@@ -319,14 +318,14 @@ jobs:
               }
 
               const news = await newsRes.json();
-              console.log(`ð° Fetched ${news.length} news articles for ${today}`);
+              console.log(`📰 Fetched ${news.length} news articles for ${today}`);
               return news;
             }
 
-            // ââ Generate questions using Gemini ââ
+            // ── Generate questions using Gemini ──
             async function generateMockTestQuestions(newsArticles) {
               if (newsArticles.length === 0) {
-                console.log('â ï¸ No news articles found for today. Skipping question generation.');
+                console.log('⚠️ No news articles found for today. Skipping question generation.');
                 return [];
               }
 
@@ -392,7 +391,7 @@ jobs:
               return JSON.parse(text);
             }
 
-            // ââ Transform and insert questions ââ
+            // ── Transform and insert questions ──
             async function insertMockTestQuestions(testData, newsArticles) {
               const insertRows = [];
 
@@ -415,7 +414,7 @@ jobs:
                 }
               }
 
-              console.log(`\nð¾ Inserting ${insertRows.length} questions into daily_mock_tests...`);
+              console.log(`\n💾 Inserting ${insertRows.length} questions into daily_mock_tests...`);
 
               const insertRes = await fetch(
                 `${process.env.SUPABASE_URL}/rest/v1/daily_mock_tests`,
@@ -437,23 +436,23 @@ jobs:
               }
 
               const inserted = await insertRes.json();
-              console.log(`â Successfully inserted ${inserted.length} mock test questions for ${today}`);
+              console.log(`✅ Successfully inserted ${inserted.length} mock test questions for ${today}`);
               console.log('Categories:', [...new Set(inserted.map(r => r.passage_category))].join(', '));
               console.log('Sources:', [...new Set(inserted.map(r => r.source))].join(', '));
 
               return inserted;
             }
 
-            // ââ Main execution ââ
+            // ── Main execution ──
             try {
               const newsArticles = await fetchTodaysNews();
 
               if (newsArticles.length === 0) {
-                console.log('â ï¸ No news articles found. Skipping mock test generation.');
+                console.log('⚠️ No news articles found. Skipping mock test generation.');
                 return;
               }
 
-              console.log('\nð¤ Generating questions via Gemini...');
+              console.log('\n🤖 Generating questions via Gemini...');
               const testData = await generateMockTestQuestions(newsArticles);
 
               if (!testData.passages || testData.passages.length === 0) {
@@ -465,6 +464,6 @@ jobs:
               await insertMockTestQuestions(testData, newsArticles);
 
             } catch (err) {
-              console.error('â Fatal error:', err.message);
+              console.error('❌ Fatal error:', err.message);
               process.exit(1);
             }
