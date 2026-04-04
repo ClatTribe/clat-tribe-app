@@ -60,7 +60,7 @@ export default function Highlights() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-secondary mb-2">Daily News</p>
-            <h1 className="font-headline text-5xl md:text-6xl font-bold text-[#060818] leading-tight">
+            <h1 className="font-headline text-5xl md:text-6xl font-bold text-white leading-tight">
               Today's Headlines
             </h1>
           </div>
