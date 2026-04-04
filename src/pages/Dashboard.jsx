@@ -69,7 +69,7 @@ export default function Dashboard() {
     value: Math.round((data.score / data.total) * 100)
   }))
 
-  // Progress percentage (based on XP milestones â 1000 XP = 100%)
+  // Progress percentage (based on XP milestones — 1000 XP = 100%)
   const overallProgress = Math.min(Math.round((xp / 1000) * 100), 100)
 
   if (loading && user) {
@@ -117,7 +117,7 @@ export default function Dashboard() {
           icon="star"
           iconBg="bg-secondary-container/20"
           iconColor="text-secondary"
-          badge={xp > 0 ? `+${xp}` : 'â'}
+          badge={xp > 0 ? `+${xp}` : '—'}
           badgeColor={xp > 0 ? 'text-green-600 bg-green-50' : 'text-slate-400 bg-slate-50'}
           label="Total XP"
           value={xp.toLocaleString()}
@@ -127,7 +127,7 @@ export default function Dashboard() {
           icon="local_fire_department"
           iconBg="bg-amber-100"
           iconColor="text-amber-600"
-          badge={streak > 0 ? `${streak}d` : 'â'}
+          badge={streak > 0 ? `${streak}d` : '—'}
           badgeColor={streak > 0 ? 'text-amber-600 bg-amber-50' : 'text-slate-400 bg-slate-50'}
           label="Current Streak"
           value={`${streak} day${streak !== 1 ? 's' : ''}`}
@@ -137,20 +137,20 @@ export default function Dashboard() {
           icon="fact_check"
           iconBg="bg-blue-100"
           iconColor="text-blue-600"
-          badge={quizHistory.length > 0 ? `${quizHistory.length} taken` : 'â'}
+          badge={quizHistory.length > 0 ? `${quizHistory.length} taken` : '—'}
           badgeColor={quizHistory.length > 0 ? 'text-blue-600 bg-blue-50' : 'text-slate-400 bg-slate-50'}
           label="Mock Score Avg"
-          value={quizHistory.length > 0 ? `${mockScoreAvg}/${mockScoreTotal}` : 'â'}
+          value={quizHistory.length > 0 ? `${mockScoreAvg}/${mockScoreTotal}` : '—'}
           sub={quizHistory.length > 0 ? `Across ${quizHistory.length} attempt${quizHistory.length !== 1 ? 's' : ''}` : 'Take a quiz to see your score'}
         />
         <MetricCard
           icon="collections_bookmark"
           iconBg="bg-purple-100"
           iconColor="text-purple-600"
-          badge={flashcardsMastered > 0 ? `${flashcardsMastered}` : 'â'}
+          badge={flashcardsMastered > 0 ? `${flashcardsMastered}` : '—'}
           badgeColor={flashcardsMastered > 0 ? 'text-green-600 bg-green-50' : 'text-slate-400 bg-slate-50'}
           label="Flashcards Mastered"
-          value={flashcardsTotal > 0 ? `${flashcardsMastered}/${flashcardsTotal}` : 'â'}
+          value={flashcardsTotal > 0 ? `${flashcardsMastered}/${flashcardsTotal}` : '—'}
           sub={flashcardsTotal > 0 ? `${Math.round((flashcardsMastered / flashcardsTotal) * 100)}% mastery rate` : 'Start reviewing flashcards'}
         />
       </div>
@@ -211,7 +211,7 @@ export default function Dashboard() {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-on-surface-variant">Recent Accuracy</span>
-                    <span className="font-bold text-on-surface">{recentAvgPercent > 0 ? `${recentAvgPercent}%` : 'â'}</span>
+                    <span className="font-bold text-on-surface">{recentAvgPercent > 0 ? `${recentAvgPercent}%` : '—'}</span>
                   </div>
                 </div>
               </div>
