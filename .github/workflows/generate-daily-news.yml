@@ -9,6 +9,9 @@ jobs:
   scrape-news:
     runs-on: ubuntu-latest
     steps:
+      - name: Install dependencies
+        run: npm install cheerio
+
       - name: Scrape and insert daily news
         uses: actions/github-script@v7
         env:
@@ -159,7 +162,8 @@ jobs:
               }
 
               const geminiData = await geminiRes.json();
-              const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;      if (!text) throw new Error('No text in Gemini response');
+              const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (!text) throw new Error('No text in Gemini response');
 
               return JSON.parse(text);
             }
