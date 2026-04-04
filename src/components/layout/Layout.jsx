@@ -81,7 +81,7 @@ export default function Layout() {
 
       <div className="flex min-h-[calc(100vh-4rem)] bg-surface">
         <Sidebar mobileOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <main className="flex-1 lg:ml-64 p-6 md:p-10 pt-6 pb-20 md:pb-10">
+        <main className="flex-1 lg:ml-64 p-6 md:p-10 pt-6 pb-20 md:pb-10 bg-background">
           <Outlet />
         </main>
       </div>
