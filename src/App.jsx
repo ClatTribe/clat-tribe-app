@@ -32,6 +32,7 @@ export default function App() {
           <Route path="/flashcards" element={<Flashcards />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/mocktest" element={<MockTest />} />
+              <Route path="/mock-test" element={<Navigate to="/mocktest" replace />} />
           <Route path="/weeklyquiz" element={<WeeklyQuiz />} />
           <Route path="/flowcharts" element={<Flowcharts />} />
           <Route path="/monthly" element={<Monthly />} />
