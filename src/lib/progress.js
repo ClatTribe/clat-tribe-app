@@ -406,6 +406,48 @@ export async function getLatestNewsDate() {
   }
 }
 
+// Daily Mock Tests
+
+export async function getDailyMockTest(date) {
+  try {
+    const { data, error } = await supabase
+      .from('daily_mock_tests')
+      .select('*')
+      .eq('test_date', date)
+      .eq('is_active', true)
+      .order('passage_category', { ascending: true })
+
+    if (error) {
+      console.error('Error fetching daily mock test:', error)
+      return []
+    }
+    return data || []
+  } catch (err) {
+    console.error('Exception in getDailyMockTest:', err)
+    return []
+  }
+}
+
+export async function getLatestMockTestDate() {
+  try {
+    const { data, error } = await supabase
+      .from('daily_mock_tests')
+      .select('test_date')
+      .eq('is_active', true)
+      .order('test_date', { ascending: false })
+      .limit(1)
+
+    if (error) {
+      console.error('Error fetching latest mock test date:', error)
+      return null
+    }
+    return data?.[0]?.test_date || null
+  } catch (err) {
+    console.error('Exception in getLatestMockTestDate:', err)
+    return null
+  }
+}
+
 export async function getRecentActivity(userId, limit = 20) {
   try {
     if (!userId) return []
