@@ -80,7 +80,7 @@ export default function WeeklyQuiz() {
         <div className="max-w-6xl mx-auto">
           <div className="mb-12">
             <p className="text-xs font-bold uppercase tracking-widest text-secondary mb-2">Smart Learning</p>
-            <h1 className="font-headline text-5xl md:text-6xl font-bold text-[#060818]">Weekly Quizzes</h1>
+            <h1 className="font-headline text-5xl md:text-6xl font-bold text-white">Weekly Quizzes</h1>
             <p className="text-slate-600 mt-4">Test your knowledge across different topics. Complete all 6 quizzes to master CLAT concepts.</p>
           </div>
 
@@ -239,7 +239,7 @@ export default function WeeklyQuiz() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-secondary mb-2">{activeQuiz?.week}</p>
-            <h1 className="font-headline text-4xl md:text-5xl font-bold text-[#060818]">{activeQuiz?.title}</h1>
+            <h1 className="font-headline text-4xl md:text-5xl font-bold text-white">{activeQuiz?.title}</h1>
           </div>
           <div className="text-right">
             <p className="text-xs font-bold uppercase tracking-widest text-slate-600 mb-1">Progress</p>
