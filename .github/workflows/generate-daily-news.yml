@@ -9,9 +9,6 @@ jobs:
   scrape-news:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Install dependencies
-        run: npm install cheerio
       - name: Scrape and insert daily news
         uses: actions/github-script@v7
         env:
@@ -23,9 +20,9 @@ jobs:
             const cheerio = require('cheerio');
 
             const today = new Date().toISOString().split('T')[0];
-            console.log(`📰 Generating daily news for ${today}`);
+            console.log(`ð° Generating daily news for ${today}`);
 
-            // ── Helper: fetch HTML ──
+            // ââ Helper: fetch HTML ââ
             async function fetchHTML(url) {
               const res = await fetch(url, {
                 headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
@@ -34,7 +31,7 @@ jobs:
               return await res.text();
             }
 
-            // ── Scrape The Hindu ──
+            // ââ Scrape The Hindu ââ
             async function scrapeHinduNews() {
               const sections = [
                 { url: 'https://www.thehindu.com/news/national/', category: 'Legal' },
@@ -77,7 +74,7 @@ jobs:
               return allArticles;
             }
 
-            // ── Scrape Indian Express ──
+            // ââ Scrape Indian Express ââ
             async function scrapeExpressNews() {
               const sections = [
                 { url: 'https://indianexpress.com/section/india/', category: 'Legal' },
@@ -120,7 +117,7 @@ jobs:
               return allArticles;
             }
 
-            // ── Generate summaries using Gemini ──
+            // ââ Generate summaries using Gemini ââ
             async function generateSummaries(articles) {
               const prompt = `You are a news summarizer for CLAT (law entrance exam) aspirants in India.
               Given the following news headlines, generate a 1-2 sentence summary for each that is relevant for CLAT GK preparation.
@@ -168,13 +165,13 @@ jobs:
               return JSON.parse(text);
             }
 
-            // ── Main execution ──
+            // ââ Main execution ââ
             try {
               // Scrape both sources
               const hinduArticles = await scrapeHinduNews();
               const expressArticles = await scrapeExpressNews();
 
-              console.log(`\n📊 Hindu: ${hinduArticles.length} articles, Express: ${expressArticles.length} articles`);
+              console.log(`\nð Hindu: ${hinduArticles.length} articles, Express: ${expressArticles.length} articles`);
 
               const allArticles = [
                 ...hinduArticles.map(a => ({ ...a, source: 'The Hindu' })),
@@ -182,12 +179,12 @@ jobs:
               ];
 
               if (allArticles.length === 0) {
-                console.log('⚠️ No articles found. Exiting.');
+                console.log('â ï¸ No articles found. Exiting.');
                 return;
               }
 
               // Generate summaries via Gemini
-              console.log('\n🤖 Generating summaries via Gemini...');
+              console.log('\nð¤ Generating summaries via Gemini...');
               const summaries = await generateSummaries(allArticles);
               console.log(`  Got ${summaries.length} summaries`);
 
@@ -206,7 +203,7 @@ jobs:
               });
 
               // Insert into Supabase
-              console.log(`\n💾 Inserting ${newsRows.length} news articles into Supabase...`);
+              console.log(`\nð¾ Inserting ${newsRows.length} news articles into Supabase...`);
 
               const insertRes = await fetch(
                 `${process.env.SUPABASE_URL}/rest/v1/daily_news`,
@@ -228,11 +225,281 @@ jobs:
               }
 
               const inserted = await insertRes.json();
-              console.log(`✅ Successfully inserted ${inserted.length} news articles for ${today}`);
+              console.log(`â Successfully inserted ${inserted.length} news articles for ${today}`);
               console.log('Categories:', [...new Set(inserted.map(r => r.category))].join(', '));
               console.log('Sources:', [...new Set(inserted.map(r => r.source))].join(', '));
 
             } catch (err) {
-              console.error('❌ Fatal error:', err.message);
+              console.error('â Fatal error:', err.message);
+              process.exit(1);
+            }
+
+  generate-mock-test:
+    runs-on: ubuntu-latest
+    needs: scrape-news
+    steps:
+      - name: Create daily_mock_tests table if it doesn't exist
+        uses: actions/github-script@v7
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        with:
+          script: |
+            const today = new Date().toISOString().split('T')[0];
+            console.log(`ð Ensuring daily_mock_tests table exists for ${today}`);
+
+            // SQL to create the table if it doesn't exist
+            const createTableSQL = `
+              CREATE TABLE IF NOT EXISTS daily_mock_tests (
+                id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+                test_date date NOT NULL,
+                passage_text text NOT NULL,
+                passage_category text NOT NULL,
+                question_text text NOT NULL,
+                options jsonb NOT NULL,
+                correct_answer integer NOT NULL,
+                explanation text,
+                source text,
+                is_active boolean DEFAULT true,
+                created_at timestamptz DEFAULT now()
+              );
+
+              CREATE INDEX IF NOT EXISTS idx_daily_mock_tests_date ON daily_mock_tests(test_date);
+              CREATE INDEX IF NOT EXISTS idx_daily_mock_tests_active ON daily_mock_tests(is_active);
+            `;
+
+            try {
+              const tableRes = await fetch(
+                `${process.env.SUPABASE_URL}/rest/v1/rpc/exec`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY,
+                    'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
+                  },
+                  body: JSON.stringify({ query: createTableSQL })
+                }
+              );
+
+              if (!tableRes.ok) {
+                console.log('Note: Table may already exist or RPC not available. Proceeding with insert.');
+              } else {
+                console.log('â Table created or verified');
+              }
+            } catch (err) {
+              console.log('Note: Proceeding with insert. Table may already exist.');
+            }
+
+      - name: Generate mock test questions from daily news
+        uses: actions/github-script@v7
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        with:
+          script: |
+            const today = new Date().toISOString().split('T')[0];
+            console.log(`ð§  Generating mock test questions for ${today}`);
+
+            // ââ Fetch today's news articles from Supabase ââ
+            async function fetchTodaysNews() {
+              const newsRes = await fetch(
+                `${process.env.SUPABASE_URL}/rest/v1/daily_news?news_date=eq.${today}&is_active=eq.true`,
+                {
+                  headers: {
+                    'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY,
+                    'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
+                  }
+                }
+              );
+
+              if (!newsRes.ok) {
+                throw new Error(`Failed to fetch news: ${newsRes.status}`);
+              }
+
+              const news = await newsRes.json();
+              console.log(`ð° Fetched ${news.length} news articles for ${today}`);
+              return news;
+            }
+
+            // ââ Generate questions using Gemini ââ
+            async function generateMockTestQuestions(newsArticles) {
+              if (newsArticles.length === 0) {
+                console.log('â ï¸ No news articles found for today. Skipping question generation.');
+                return [];
+              }
+
+              const prompt = `You are an expert CLAT (Common Law Admission Test) exam question designer. Your task is to generate 20 multiple-choice questions (MCQs) based on today's news articles.
+
+Guidelines:
+1. Create exactly 4 reading comprehension passages (~100 words each) from the news articles
+2. Passages should be categorized as: Legal/Constitutional, Economy/Business, International, Current Affairs/Science
+3. Generate 5 MCQs for each passage (20 total)
+4. Each question must follow CLAT exam format:
+   - Clear, concise question text
+   - Exactly 4 options
+   - Only 1 correct answer
+   - An explanation for the correct answer
+5. Questions should test comprehension, inference, and CLAT-relevant skills
+
+News Articles to base passages on:
+${newsArticles.map((a, i) => `
+${i+1}. Category: ${a.category}
+   Source: ${a.source}
+   Headline: ${a.headline}
+   Summary: ${a.summary}
+`).join('\n')}
+
+Return a JSON object with this structure:
+{
+  "passages": [
+    {
+      "text": "passage text (~100 words)",
+      "category": "Legal/Constitutional | Economy/Business | International | Current Affairs/Science",
+      "questions": [
+        {
+          "text": "question text",
+          "options": ["option 1", "option 2", "option 3", "option 4"],
+          "correct_answer": 0,
+          "explanation": "explanation text"
+        },
+        ... (5 questions per passage)
+      ]
+    },
+    ... (4 passages total)
+  ]
+}`;
+
+              const geminiRes = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`,
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: {
+                      responseMimeType: 'application/json',
+                      responseSchema: {
+                        type: 'OBJECT',
+                        properties: {
+                          passages: {
+                            type: 'ARRAY',
+                            items: {
+                              type: 'OBJECT',
+                              properties: {
+                                text: { type: 'STRING' },
+                                category: { type: 'STRING' },
+                                questions: {
+                                  type: 'ARRAY',
+                                  items: {
+                                    type: 'OBJECT',
+                                    properties: {
+                                      text: { type: 'STRING' },
+                                      options: { type: 'ARRAY', items: { type: 'STRING' } },
+                                      correct_answer: { type: 'INTEGER' },
+                                      explanation: { type: 'STRING' }
+                                    },
+                                    required: ['text', 'options', 'correct_answer', 'explanation']
+                                  }
+                                }
+                              },
+                              required: ['text', 'category', 'questions']
+                            }
+                          }
+                        },
+                        required: ['passages']
+                      }
+                    }
+                  })
+                }
+              );
+
+              if (!geminiRes.ok) {
+                const errText = await geminiRes.text();
+                throw new Error(`Gemini API error: ${geminiRes.status} - ${errText}`);
+              }
+
+              const geminiData = await geminiRes.json();
+              const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (!text) throw new Error('No text in Gemini response');
+
+              return JSON.parse(text);
+            }
+
+            // ââ Transform and insert questions ââ
+            async function insertMockTestQuestions(testData, newsArticles) {
+              const insertRows = [];
+
+              for (const passage of testData.passages) {
+                const matchedNews = newsArticles.find(n => n.category === passage.category);
+                const source = matchedNews?.source || 'Generated';
+
+                for (const question of passage.questions) {
+                  insertRows.push({
+                    test_date: today,
+                    passage_text: passage.text,
+                    passage_category: passage.category,
+                    question_text: question.text,
+                    options: question.options,
+                    correct_answer: question.correct_answer,
+                    explanation: question.explanation,
+                    source: source,
+                    is_active: true
+                  });
+                }
+              }
+
+              console.log(`\nð¾ Inserting ${insertRows.length} questions into daily_mock_tests...`);
+
+              const insertRes = await fetch(
+                `${process.env.SUPABASE_URL}/rest/v1/daily_mock_tests`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY,
+                    'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+                    'Prefer': 'return=representation,resolution=merge-duplicates'
+                  },
+                  body: JSON.stringify(insertRows)
+                }
+              );
+
+              if (!insertRes.ok) {
+                const errBody = await insertRes.text();
+                throw new Error(`Supabase insert failed: ${insertRes.status} - ${errBody}`);
+              }
+
+              const inserted = await insertRes.json();
+              console.log(`â Successfully inserted ${inserted.length} mock test questions for ${today}`);
+              console.log('Categories:', [...new Set(inserted.map(r => r.passage_category))].join(', '));
+              console.log('Sources:', [...new Set(inserted.map(r => r.source))].join(', '));
+
+              return inserted;
+            }
+
+            // ââ Main execution ââ
+            try {
+              const newsArticles = await fetchTodaysNews();
+
+              if (newsArticles.length === 0) {
+                console.log('â ï¸ No news articles found. Skipping mock test generation.');
+                return;
+              }
+
+              console.log('\nð¤ Generating questions via Gemini...');
+              const testData = await generateMockTestQuestions(newsArticles);
+
+              if (!testData.passages || testData.passages.length === 0) {
+                throw new Error('No passages generated by Gemini');
+              }
+
+              console.log(`  Generated ${testData.passages.length} passages with ${testData.passages.reduce((acc, p) => acc + p.questions.length, 0)} total questions`);
+
+              await insertMockTestQuestions(testData, newsArticles);
+
+            } catch (err) {
+              console.error('â Fatal error:', err.message);
               process.exit(1);
             }
