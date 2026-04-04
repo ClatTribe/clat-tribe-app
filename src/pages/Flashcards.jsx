@@ -148,7 +148,7 @@ export default function Flashcards() {
       {/* Header */}
       <div className="max-w-4xl mx-auto mb-12">
         <p className="text-xs font-bold uppercase tracking-widest text-secondary mb-2">Smart Learning</p>
-        <h1 className="font-headline text-5xl md:text-6xl font-bold text-[#060818] mb-8">Flashcards</h1>
+        <h1 className="font-headline text-5xl md:text-6xl font-bold text-white mb-8">Flashcards</h1>
 
         {/* Category Chips */}
         <div className="flex flex-wrap gap-3">
