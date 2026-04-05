@@ -96,7 +96,7 @@ export const staticGkData = [
   {
     cat: "environment",
     title: "Climate Change and Paris Agreement",
-    preview: "Paris Agreement aims to limit warming to 1.5°C above pre-industrial levels...",
+    preview: "Paris Agreement aims to limit warming to 1.5\u00b0C above pre-industrial levels...",
     content: "Adopted in 2015, Paris Agreement has 195 signatories. Each country commits NDCs (Nationally Determined Contributions) reviewed every 5 years. India pledges 40% renewable energy by 2030 and net-zero by 2070. The agreement created a binding framework unlike Kyoto Protocol, with loss-and-damage fund for vulnerable nations."
   },
   // International
@@ -104,7 +104,7 @@ export const staticGkData = [
     cat: "international",
     title: "United Nations Structure",
     preview: "The UN has six main organs: General Assembly, Security Council, Economic and Social Council...",
-    content: "UN established 1945 with 193 member states. Six main organs: (1) General Assembly (all states, one vote each), (2) Security Council (15 members, 5 permanent with veto), (3) ECOSOC, (4) Trusteeship Council, (5) ICJ, (6) Secretariat. Secretary-General is chief administrative officer (currently António Guterres, until 2026)."
+    content: "UN established 1945 with 193 member states. Six main organs: (1) General Assembly (all states, one vote each), (2) Security Council (15 members, 5 permanent with veto), (3) ECOSOC, (4) Trusteeship Council, (5) ICJ, (6) Secretariat. Secretary-General is chief administrative officer (currently Ant\u00f3nio Guterres, until 2026)."
   },
   {
     cat: "international",
