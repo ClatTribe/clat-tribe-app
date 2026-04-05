@@ -73,6 +73,38 @@ export default function WeeklyQuiz() {
     resetQuiz()
   }
 
+  // LOADING SKELETON
+  const [pageReady, setPageReady] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setPageReady(true), 0)
+    return () => clearTimeout(t)
+  }, [])
+
+  if (!pageReady) {
+    return (
+      <div className="pt-6 px-0 md:px-2 pb-16 min-h-screen bg-[#060818]">
+        <div className="max-w-6xl mx-auto animate-pulse">
+          <div className="mb-12">
+            <div className="h-3 w-24 bg-white/10 rounded mb-3"></div>
+            <div className="h-12 w-72 bg-white/10 rounded mb-4"></div>
+            <div className="h-4 w-96 bg-white/5 rounded"></div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1,2,3,4,5,6].map(i => (
+              <div key={i} className="bg-white/5 rounded-2xl p-8 border border-white/10">
+                <div className="h-3 w-16 bg-white/10 rounded mb-3"></div>
+                <div className="h-6 w-48 bg-white/10 rounded mb-6"></div>
+                <div className="flex justify-between">
+                  <div className="h-3 w-24 bg-white/5 rounded"></div>
+                  <div className="h-5 w-5 bg-white/5 rounded"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
   // QUIZ SELECTION VIEW
   if (!activeQuizId) {
     return (
