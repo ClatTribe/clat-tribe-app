@@ -26,7 +26,7 @@ export default function Monthly() {
       <div className="max-w-5xl mx-auto mb-12">
         <p className="text-xs font-bold uppercase tracking-widest text-secondary mb-2">Monthly Revision</p>
         <h1 className="font-headline text-5xl md:text-6xl font-bold text-[#060818] mb-4">
-          {moData.month} — Monthly Revision
+          {moData.month} &mdash; Monthly Revision
         </h1>
         <p className="text-slate-600 text-lg mb-8">
           Solve all {moData.questions.length} questions to complete your monthly revision. Track your progress below.
@@ -146,7 +146,7 @@ export default function Monthly() {
       <div className="max-w-5xl mx-auto mb-12">
         <p className="text-xs font-bold uppercase tracking-widest text-secondary mb-2">Monthly Revision</p>
         <h1 className="font-headline text-5xl md:text-6xl font-bold text-[#060818] mb-4">
-          {moData.month} — Monthly Revision
+          {moData.month} &mdash; Monthly Revision
         </h1>
         <p className="text-slate-600 text-lg mb-8">
           Solve all {moData.questions.length} questions to complete your monthly revision. Track your progress below.
