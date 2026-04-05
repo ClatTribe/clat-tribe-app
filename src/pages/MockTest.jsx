@@ -491,7 +491,7 @@ export default function MockTest() {
     const isAnswered = answers[currentQuestionIndex] !== undefined
 
     return (
-      <div className="flex flex-col bg-background -mt-6 md:-mt-10 -mb-20 md:-mb-10 min-h-[calc(100vh-4rem)]">
+      <div className="fixed top-16 left-0 lg:left-64 right-0 bottom-0 z-10 flex flex-col bg-background overflow-hidden">
         {/* Top Bar */}
         <div className="bg-surface-container-low border-b border-outline-variant px-6 py-4 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-8">
