@@ -1,4 +1,5 @@
-import { moData } from '../data/monthlyMcqs'
+import { useState } from 'react'
+  import { moData } from '../data/monthlyMcqs'
 
 export default function Monthly() {
   const [answers, setAnswers] = useState({})
