@@ -322,9 +322,9 @@ export const weeklyQuizzes = [
       {
         id: 1,
         q: "What is the correct hierarchy of courts in India from highest to lowest?",
-        opts: ["Supreme Court â High Courts â District Courts", "High Courts â Supreme Court â District Courts", "Supreme Court â District Courts â High Courts", "District Courts â High Courts â Supreme Court"],
+        opts: ["Supreme Court \u00e2\u0086\u0092 High Courts \u00e2\u0086\u0092 District Courts", "High Courts \u00e2\u0086\u0092 Supreme Court \u00e2\u0086\u0092 District Courts", "Supreme Court \u00e2\u0086\u0092 District Courts \u00e2\u0086\u0092 High Courts", "District Courts \u00e2\u0086\u0092 High Courts \u00e2\u0086\u0092 Supreme Court"],
         correct: 0,
-        explanation: "India's judicial hierarchy is: Supreme Court of India (apex body) â High Courts (state level) â District Courts and subordinate courts. The Supreme Court has appellate and original jurisdiction."
+        explanation: "India's judicial hierarchy is: Supreme Court of India (apex body) \u00e2\u0086\u0092 High Courts (state level) \u00e2\u0086\u0092 District Courts and subordinate courts. The Supreme Court has appellate and original jurisdiction."
       },
       {
         id: 2,
