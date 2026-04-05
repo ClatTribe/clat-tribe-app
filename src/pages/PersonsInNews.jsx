@@ -14,7 +14,7 @@ const PersonsInNews = () => {
     },
     {
       id: 2,
-      name: 'António Guterres',
+      name: 'Ant\u00f3nio Guterres',
       designation: 'UN Secretary General',
       whyInNews: 'Addressing global climate crisis and humanitarian concerns',
       category: 'International',
@@ -38,7 +38,7 @@ const PersonsInNews = () => {
     },
     {
       id: 5,
-      name: 'Volker Türk',
+      name: 'Volker T\u00fcrk',
       designation: 'UN High Commissioner for Human Rights',
       whyInNews: 'Newly appointed head addressing global human rights violations',
       category: 'International',
