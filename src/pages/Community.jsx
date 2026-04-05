@@ -29,7 +29,7 @@ export default function Community() {
             time="2 hours ago"
             title="The nuances of Article 21 and the evolving 'Right to Privacy'"
             body="With the recent judgements, how do you all perceive the balance between state security and individual privacy? In the context of CLAT 2024, I believe the K.S. Puttaswamy case remains the bedrock. What are your thoughts on the impact of the new DPDP Act on this constitutional right?"
-            quote={'"No person shall be deprived of his life or personal liberty except according to procedure established by law." — Article 21, Constitution of India'}
+            quote={'"No person shall be deprived of his life or personal liberty except according to procedure established by law." &mdash; Article 21, Constitution of India'}
             votes={124}
           />
           <PostCard
