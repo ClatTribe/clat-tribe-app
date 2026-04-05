@@ -4,7 +4,7 @@ import Navbar from './Navbar'
 import Sidebar from './Sidebar'
 import MobileNav from './MobileNav'
 
-// Dark mode CSS variables â applied via JS because Tailwind v4 strips .dark {} blocks
+// Dark mode CSS variables \u00e2\u0080\u0094 applied via JS because Tailwind v4 strips .dark {} blocks
 const DARK_VARS = {
   '--color-surface': '#121212',
   '--color-surface-dim': '#1e1e1e',
