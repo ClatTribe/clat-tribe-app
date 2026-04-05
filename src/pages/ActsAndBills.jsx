@@ -167,7 +167,7 @@ const ActsAndBills = () => {
               className="text-sm text-gray-600 flex gap-2"
               style={{ fontFamily: 'Manrope' }}
             >
-              <span className="text-gray-400">•</span>
+              <span className="text-gray-400">&#x2022;</span>
               <span>{provision}</span>
             </li>
           ))}
